@@ -1,4 +1,4 @@
-<img src="./krill-logo.svg" alt="Krill Logo" style="zoom:25%;" /> 
+<img src="./krill-logo.svg" width="15%" />
 
 # Krill
 ### *Institution grade server for Solana onchain tokenization, attestation on stablecoins*
