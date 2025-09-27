@@ -16,5 +16,6 @@ keywords = [
     "wallet-adapter",
 ]
 categories = ["cryptography::cryptocurrencies"]
+edition = "2021"
 
 [workspace.dependencies]
