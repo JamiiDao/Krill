@@ -1,0 +1,30 @@
+[package]
+name = "frost-dkg-channel"
+authors.workspace = true
+version.workspace = true
+license.workspace = true
+description.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+edition.workspace = true
+
+[features]
+default = ["p256", "ed25519", "quic-https"]
+p256 = ["dep:frost-p256"]
+ed25519 = ["dep:frost-ed25519"]
+quic-https = ["dep:quinn"]
+
+[dependencies]
+frost-p256 = { version = "=2.2.0", default-features = false, features = [
+    "cheater-detection",
+], optional = true }
+frost-ed25519 = { version = "=2.2.0", default-features = false, features = [
+    "cheater-detection",
+], optional = true }
+
+quinn = { version = "=0.11.9", default-features = false, features = [
+    "runtime-smol",
+    "rustls",
+], optional = true }
+rand = "0.8"
