@@ -1,5 +1,5 @@
 mod dkg;
 pub use dkg::*;
 
-mod keypair;
-pub use keypair::*;
+mod storage;
+pub use storage::*;
