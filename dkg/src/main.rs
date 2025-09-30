@@ -68,4 +68,6 @@ fn main() {
         party1_keypair.verifying_key(),
         party2_keypair.verifying_key()
     );
+
+    //------------- SIGNING
 }

@@ -28,3 +28,4 @@ quinn = { version = "=0.11.9", default-features = false, features = [
     "rustls",
 ], optional = true }
 rand = "0.8"
+blake3 = "1.8.2"
