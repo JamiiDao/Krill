@@ -27,4 +27,16 @@ quinn = { version = "=0.11.9", default-features = false, features = [
     "runtime-smol",
     "rustls",
 ], optional = true }
-rand = "0.8"
+# rand = "0.9"
+blake3 = "1.8.2"
+frost-core = { version = "2.2.0", default-features = false, features = [
+    "cheater-detection",
+] }
+thiserror = { version = "2.0.17", default-features = false }
+zeroize = { version = "1.8.2", default-features = false }
+rand_chacha = { version = "0.9.0", features = ["os_rng"] }
+async-dup = "1.2.4"
+async-lock = "3.4.1"
+async-io = "2.6.0"
+smol = "2.0.2"
+wincode = { version = "0.1.2", features = ["derive"] }
