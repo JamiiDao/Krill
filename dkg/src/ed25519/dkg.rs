@@ -1,6 +1,6 @@
 use async_dup::Arc;
 use async_lock::RwLock;
-use frost_core::Ciphersuite;
+use frost_core::{Ciphersuite, Field, Group, Scalar};
 use frost_ed25519::{
     self as frost,
     keys::dkg::{
@@ -11,33 +11,119 @@ use frost_ed25519::{
 };
 
 use crate::{
-    DkgState, FrostDkg, FrostDkgError, FrostDkgMemStorage, FrostDkgResult, FrostDkgStorage,
-    RandomBytes,
+    FrostDkg, FrostDkgEd25519Storage, FrostDkgError, FrostDkgMemStorage, FrostDkgResult,
+    FrostDkgState, FrostDkgStorage, RandomBytes,
 };
 
 #[derive(Default)]
-pub struct FrostEd25519Dkg;
+pub struct FrostEd25519Dkg<S: FrostDkgEd25519Storage>(S);
 
-impl FrostEd25519Dkg {
-    pub fn new() -> Self {
-        Self
+impl<S: FrostDkgEd25519Storage> FrostEd25519Dkg<S> {
+    pub fn new(storage: S) -> Self {
+        Self(storage)
     }
 }
 
-impl FrostDkg for FrostEd25519Dkg {
+impl<S: FrostDkgEd25519Storage + Clone> FrostDkg for FrostEd25519Dkg<S> {
     type DkgCipherSuite = Ed25519Sha512;
     type DkgGenericError = FrostDkgError;
 
     async fn storage(
         &self,
-    ) -> Result<impl crate::FrostDkgStorage<Self::DkgCipherSuite>, Self::DkgGenericError> {
-        Ok(FrostDkgMemStorage::get_storage().await?.clone())
+    ) -> Result<
+        impl FrostDkgStorage<Self::DkgCipherSuite, Self::DkgGenericError>,
+        Self::DkgGenericError,
+    > {
+        Ok(self.0.clone())
     }
 
-    fn generate_identifier(&self) -> Result<Ed25519Identifier, FrostDkgError> {
-        let identifier = RandomBytes::<8>::generate();
-        let identifier = u64::from_le_bytes(*identifier.take());
-        Ed25519Identifier::new(identifier.into())
+    fn generate_identifier(
+        &self,
+        identifier: impl AsRef<[u8]>,
+    ) -> Result<frost_core::Identifier<Self::DkgCipherSuite>, Self::DkgGenericError> {
+        let identifier_bytes = *blake3::hash(identifier.as_ref()).as_bytes();
+
+        let scalar_data = u128::from_le_bytes(identifier_bytes[0..16].try_into().unwrap());
+
+        Ed25519Identifier::new(scalar_data.into())
             .or(Err(FrostDkgError::IdentifierDerivationNotSupported))
+    }
+
+    fn generate_identifier_random(&self) -> Result<Ed25519Identifier, FrostDkgError> {
+        let identifier = RandomBytes::<32>::generate();
+        Ed25519Identifier::derive(&*identifier.take())
+            .or(Err(FrostDkgError::IdentifierDerivationNotSupported))
+    }
+
+    async fn frost_dkg_state_transition(&self) -> Result<FrostDkgState, Self::DkgGenericError> {
+        let current_state = self.storage().await?.get_state().await?;
+
+        let state = match current_state {
+            FrostDkgState::Initial => FrostDkgState::Part1,
+            FrostDkgState::Part1 => FrostDkgState::Part2,
+            FrostDkgState::Part2 => FrostDkgState::Finalized,
+            _ => return Err(FrostDkgError::DkgStateAlreadyFinalized),
+        };
+
+        self.storage().await?.set_state(state).await?;
+
+        Ok(state)
+    }
+
+    async fn part1(&self) -> Result<(), Self::DkgGenericError> {
+        let storage = self.storage().await?;
+
+        let current_state = storage.get_state().await?;
+
+        if current_state != FrostDkgState::Initial {
+            return Err(FrostDkgError::InvalidDkgState(
+                "Expected FROST Dkg to be `Initial` since no DKG has been performed at this point.",
+            ));
+        }
+
+        let maximum_signers = storage.get_maximum_signers().await?;
+        let minimum_signers = storage.get_minimum_signers().await?;
+        let identifier = storage.get_identifier().await?;
+
+        let (secret, package) = frost::keys::dkg::part1(
+            identifier,
+            maximum_signers,
+            minimum_signers,
+            rand::thread_rng(),
+        )
+        .map_err(|error| FrostDkgError::Part1KeyGenerationError(error.to_string()))?;
+
+        storage.set_part1_package(secret, package).await?;
+        self.frost_dkg_state_transition().await?;
+
+        Ok(())
+    }
+
+    async fn receive_part1(
+        &self,
+        identifier: frost_core::Identifier<Self::DkgCipherSuite>,
+        package: frost_core::keys::dkg::round1::Package<Self::DkgCipherSuite>,
+    ) -> Result<(), Self::DkgGenericError> {
+        self.storage()
+            .await?
+            .add_part1_received_package(identifier, package)
+            .await?;
+
+        Ok(())
+    }
+
+    async fn send_part1(
+        &self,
+    ) -> Result<
+        (
+            frost_core::Identifier<Self::DkgCipherSuite>,
+            frost_core::keys::dkg::round1::Package<Self::DkgCipherSuite>,
+        ),
+        Self::DkgGenericError,
+    > {
+        let identifier = self.storage().await?.get_identifier().await?;
+        let part_1_package = self.storage().await?.get_part1_public_package().await?;
+
+        Ok((identifier, part_1_package))
     }
 }
