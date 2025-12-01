@@ -18,9 +18,11 @@ quic-https = ["dep:quinn"]
 [dependencies]
 frost-p256 = { version = "=2.2.0", default-features = false, features = [
     "cheater-detection",
+    "serialization",
 ], optional = true }
 frost-ed25519 = { version = "=2.2.0", default-features = false, features = [
     "cheater-detection",
+    "serialization",
 ], optional = true }
 
 quinn = { version = "=0.11.9", default-features = false, features = [
@@ -34,9 +36,10 @@ frost-core = { version = "2.2.0", default-features = false, features = [
 ] }
 thiserror = { version = "2.0.17", default-features = false }
 zeroize = { version = "1.8.2", default-features = false }
-rand_chacha = { version = "0.9.0", features = ["os_rng"] }
+rand_chacha = { version = "0.9" }
 async-dup = "1.2.4"
 async-lock = "3.4.1"
 async-io = "2.6.0"
 smol = "2.0.2"
 wincode = { version = "0.1.2", features = ["derive"] }
+rand = "0.8"
