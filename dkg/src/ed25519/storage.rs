@@ -1,28 +1,14 @@
 use core::fmt;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 
 use async_dup::Arc;
 use async_lock::RwLock;
 use frost_core::Ciphersuite;
-use frost_ed25519::{
-    keys::{
-        dkg::{
-            round1::{
-                Package as Ed25519Round1Package, SecretPackage as Ed25519Round1SecretPackage,
-            },
-            round2::{
-                Package as Ed25519Round2Package, SecretPackage as Ed25519Round2SecretPackage,
-            },
-        },
-        KeyPackage as Ed25519KeyPackage, PublicKeyPackage as Ed25519PublicKeyPackage,
-    },
-    Error, Identifier as Ed25519Identifier,
-};
 use wincode::{SchemaRead, SchemaWrite};
 use zeroize::Zeroize;
 
 use crate::{
-    FrostDkgEd25519Storage, FrostDkgError, FrostDkgResult, FrostDkgState, FrostDkgStorage,
+    FrostDkgEd25519Storage, FrostDkgError, FrostDkgState, FrostDkgStorage,
 };
 
 pub type Ed25519IdentifierBytes = Vec<u8>;
@@ -254,6 +240,10 @@ impl<C: Ciphersuite, E: core::error::Error + std::convert::From<FrostDkgError>>
         Ok(self.read().await.received_part1_packages.len())
     }
 
+    async fn part2_received_packages_count(&self) -> Result<usize, E> {
+        Ok(self.read().await.received_part2_packages.len())
+    }
+
     async fn set_part2_package(
         &self,
         secret: frost_core::keys::dkg::round2::SecretPackage<C>,
@@ -308,13 +298,13 @@ impl<C: Ciphersuite, E: core::error::Error + std::convert::From<FrostDkgError>>
             .transpose()?)
     }
 
-    async fn get_all_part2_packages(
+    async fn get_all_part2_received_packages(
         &self,
     ) -> Result<BTreeMap<frost_core::Identifier<C>, frost_core::keys::dkg::round2::Package<C>>, E>
     {
         self.write()
             .await
-            .part2_package
+            .received_part2_packages
             .iter()
             .map(|(identifier_bytes, package_bytes)| {
                 let identifier =
@@ -347,6 +337,20 @@ impl<C: Ciphersuite, E: core::error::Error + std::convert::From<FrostDkgError>>
             .await
             .received_part2_packages
             .insert(identifier.serialize(), package_bytes);
+
+        Ok(())
+    }
+
+    async fn clear(&self) -> Result<(), E> {
+        let mut take = self.write().await;
+        take.part1_package.clear();
+        take.part2_package.clear();
+        take.received_part1_packages.clear();
+        take.received_part2_packages.clear();
+        take.identifier.clear();
+        take.dkg_state = FrostDkgState::Initial;
+        take.maximum_signers = 0;
+        take.minimum_signers = 0;
 
         Ok(())
     }

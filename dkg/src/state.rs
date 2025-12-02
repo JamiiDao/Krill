@@ -10,6 +10,7 @@ pub enum FrostDkgState {
     Initial,
     Part1,
     Part2,
+    Part3,
     Finalized,
 }
 
@@ -19,6 +20,7 @@ impl fmt::Display for FrostDkgState {
             Self::Initial => "Initial",
             Self::Part1 => "Part 1",
             Self::Part2 => "Part 2",
+            Self::Part3 => "Part 3",
             Self::Finalized => "Finalized",
         };
 

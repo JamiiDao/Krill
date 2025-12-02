@@ -1,6 +1,6 @@
 use std::{collections::BTreeMap, future::Future};
 
-use frost_core::{Ciphersuite, Identifier};
+use frost_core::Ciphersuite;
 use frost_ed25519::Ed25519Sha512;
 
 use crate::{FrostDkgError, FrostDkgState};
@@ -66,6 +66,10 @@ pub trait FrostDkg {
             Self::DkgGenericError,
         >,
     >;
+
+    fn part3(
+        &self,
+    ) -> impl Future<Output = Result<FrostPart3Output<Self::DkgCipherSuite>, Self::DkgGenericError>>;
 }
 
 pub trait FrostDkgEd25519Storage: FrostDkgStorage<Ed25519Sha512, FrostDkgError> {}
@@ -135,6 +139,8 @@ pub trait FrostDkgStorage<C: Ciphersuite, E: core::error::Error> {
 
     fn part1_received_packages_count(&self) -> impl Future<Output = Result<usize, E>>;
 
+    fn part2_received_packages_count(&self) -> impl Future<Output = Result<usize, E>>;
+
     fn set_part2_package(
         &self,
         secret: frost_core::keys::dkg::round2::SecretPackage<C>,
@@ -156,7 +162,7 @@ pub trait FrostDkgStorage<C: Ciphersuite, E: core::error::Error> {
         identifier: &frost_core::Identifier<C>,
     ) -> impl Future<Output = Result<Option<frost_core::keys::dkg::round2::Package<C>>, E>>;
 
-    fn get_all_part2_packages(
+    fn get_all_part2_received_packages(
         &self,
     ) -> impl Future<
         Output = Result<
@@ -164,6 +170,8 @@ pub trait FrostDkgStorage<C: Ciphersuite, E: core::error::Error> {
             E,
         >,
     >;
+
+    fn clear(&self) -> impl Future<Output = Result<(), E>>;
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -176,4 +184,35 @@ pub struct FrostPart1Output<C: Ciphersuite> {
 pub struct FrostPart2Output<C: Ciphersuite> {
     pub identifier: frost_core::Identifier<C>,
     pub packages: BTreeMap<frost_core::Identifier<C>, frost_core::keys::dkg::round2::Package<C>>,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct FrostPart3Output<C: Ciphersuite> {
+    pub identifier: frost_core::Identifier<C>,
+    pub maximum_signers: u16,
+    pub minimum_signers: u16,
+    pub secret: frost_core::keys::KeyPackage<C>,
+    pub public_package: frost_core::keys::PublicKeyPackage<C>,
+}
+
+impl<C: Ciphersuite> FrostPart3Output<C> {
+    pub fn identifier(&self) -> &frost_core::Identifier<C> {
+        &self.identifier
+    }
+
+    pub fn maximum_signers(&self) -> u16 {
+        self.maximum_signers
+    }
+
+    pub fn minimum_signers(&self) -> u16 {
+        self.minimum_signers
+    }
+
+    pub fn secret(&self) -> &frost_core::keys::KeyPackage<C> {
+        &self.secret
+    }
+
+    pub fn public_package(&self) -> &frost_core::keys::PublicKeyPackage<C> {
+        &self.public_package
+    }
 }
