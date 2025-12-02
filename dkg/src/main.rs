@@ -1,6 +1,7 @@
-mod ed25519;
 use async_dup::Arc;
 use async_lock::RwLock;
+
+mod ed25519;
 pub use ed25519::*;
 
 mod state;
@@ -50,8 +51,6 @@ fn main() {
                 .set_minimum_signers(2)
                 .await
                 .unwrap();
-
-            ed25519_dkg_party1.part1().await.unwrap();
         }
 
         let ed25519_dkg_party2 =
@@ -83,8 +82,6 @@ fn main() {
                 .set_minimum_signers(2)
                 .await
                 .unwrap();
-
-            ed25519_dkg_party2.part1().await.unwrap();
         }
 
         let party1_identifier = ed25519_dkg_party1
@@ -92,13 +89,6 @@ fn main() {
             .await
             .unwrap()
             .get_identifier()
-            .await
-            .unwrap();
-        let party1_part1_package = ed25519_dkg_party1
-            .storage()
-            .await
-            .unwrap()
-            .get_part1_public_package()
             .await
             .unwrap();
 
@@ -109,16 +99,28 @@ fn main() {
             .get_identifier()
             .await
             .unwrap();
-        let party2_part1_package = ed25519_dkg_party2
-            .storage()
-            .await
-            .unwrap()
-            .get_part1_public_package()
-            .await
-            .unwrap();
 
         {
             // Part1
+
+            ed25519_dkg_party1.part1().await.unwrap();
+            ed25519_dkg_party2.part1().await.unwrap();
+
+            let party1_part1_package = ed25519_dkg_party1
+                .storage()
+                .await
+                .unwrap()
+                .get_part1_public_package()
+                .await
+                .unwrap();
+            let party2_part1_package = ed25519_dkg_party2
+                .storage()
+                .await
+                .unwrap()
+                .get_part1_public_package()
+                .await
+                .unwrap();
+
             ed25519_dkg_party1
                 .receive_part1(party2_identifier, party2_part1_package)
                 .await
@@ -131,32 +133,37 @@ fn main() {
 
         {
             // Part2
-            ed25519_dkg_party1.part2().await.unwrap();
-            ed25519_dkg_party2.part2().await.unwrap();
+            let party1 = ed25519_dkg_party1.part2().await.unwrap();
+            let party2 = ed25519_dkg_party2.part2().await.unwrap();
 
-            let party1_part2_package_to_send_to_party2 = ed25519_dkg_party1
+            assert_eq!(party1.identifier, party1_identifier);
+            assert_eq!(party2.identifier, party2_identifier);
+
+            let send_to_party2 = ed25519_dkg_party1
                 .send_part2(&party2_identifier)
                 .await
                 .unwrap()
                 .unwrap();
-            let party2_part2_package_to_send_to_party1 = ed25519_dkg_party2
+            let send_to_party1 = ed25519_dkg_party2
                 .send_part2(&party1_identifier)
                 .await
                 .unwrap()
                 .unwrap();
 
             ed25519_dkg_party1
-                .receive_part2(party2_identifier, party2_part2_package_to_send_to_party1)
+                .receive_part2(party2_identifier, send_to_party1)
                 .await
                 .unwrap();
             ed25519_dkg_party2
-                .receive_part2(party1_identifier, party1_part2_package_to_send_to_party2)
+                .receive_part2(party1_identifier, send_to_party2)
                 .await
                 .unwrap();
         }
 
         {
             // Part3
+            ed25519_dkg_party1.part3().await.unwrap();
+            ed25519_dkg_party2.part3().await.unwrap();
         }
     })
 }

@@ -1,18 +1,9 @@
-use async_dup::Arc;
-use async_lock::RwLock;
-use frost_core::{Ciphersuite, Field, Group, Scalar};
-use frost_ed25519::{
-    self as frost,
-    keys::dkg::{
-        round1::{Package as Ed25519Round1Package, SecretPackage as Ed25519Round1SecretPackage},
-        round2::{Package as Ed25519Round2Package, SecretPackage as Ed25519Round2SecretPackage},
-    },
-    Ed25519Sha512, Identifier as Ed25519Identifier,
-};
+use frost_ed25519::{self as frost, Ed25519Sha512, Identifier as Ed25519Identifier};
+use zeroize::Zeroize;
 
 use crate::{
-    FrostDkg, FrostDkgEd25519Storage, FrostDkgError, FrostDkgMemStorage, FrostDkgResult,
-    FrostDkgState, FrostDkgStorage, FrostPart1Output, FrostPart2Output, RandomBytes,
+    FrostDkg, FrostDkgEd25519Storage, FrostDkgError, FrostDkgState, FrostDkgStorage,
+    FrostPart1Output, FrostPart2Output, FrostPart3Output, RandomBytes,
 };
 
 #[derive(Default)]
@@ -47,7 +38,9 @@ impl<S: FrostDkgEd25519Storage + Clone> FrostDkg for FrostEd25519Dkg<S> {
     ) -> Result<frost_core::Identifier<Self::DkgCipherSuite>, Self::DkgGenericError> {
         let identifier_bytes = *blake3::hash(identifier.as_ref()).as_bytes();
 
-        let scalar_data = u128::from_le_bytes(identifier_bytes[0..16].try_into().unwrap());
+        let scalar_data = u128::from_le_bytes(identifier_bytes[0..16].try_into().or(Err(
+            FrostDkgError::ToByteArray("Unable to cast the slice tto a [0u8;16] byte array"),
+        ))?);
 
         Ed25519Identifier::new(scalar_data.into())
             .or(Err(FrostDkgError::IdentifierDerivationNotSupported))
@@ -65,7 +58,8 @@ impl<S: FrostDkgEd25519Storage + Clone> FrostDkg for FrostEd25519Dkg<S> {
         let state = match current_state {
             FrostDkgState::Initial => FrostDkgState::Part1,
             FrostDkgState::Part1 => FrostDkgState::Part2,
-            FrostDkgState::Part2 => FrostDkgState::Finalized,
+            FrostDkgState::Part2 => FrostDkgState::Part3,
+            FrostDkgState::Part3 => FrostDkgState::Finalized,
             _ => return Err(FrostDkgError::DkgStateAlreadyFinalized),
         };
 
@@ -194,6 +188,22 @@ impl<S: FrostDkgEd25519Storage + Clone> FrostDkg for FrostEd25519Dkg<S> {
         package: frost_core::keys::dkg::round2::Package<Self::DkgCipherSuite>,
     ) -> Result<(), Self::DkgGenericError> {
         let state = self.storage().await?.get_state().await?;
+        let maximum_signers = self.storage().await?.get_maximum_signers().await?;
+        let party_count = self
+            .storage()
+            .await?
+            .part2_received_packages_count()
+            .await?;
+
+        if state != FrostDkgState::Part2 {
+            return Err(FrostDkgError::InvalidDkgState(
+                "Expected FROST Dkg to be `Part2` since no DKG has been performed at this point.",
+            ));
+        }
+
+        if party_count >= maximum_signers as usize {
+            return Err(FrostDkgError::Part2MaximumPartiesReached)?;
+        }
 
         if state != FrostDkgState::Part2 {
             return Err(FrostDkgError::InvalidDkgState(
@@ -203,7 +213,16 @@ impl<S: FrostDkgEd25519Storage + Clone> FrostDkg for FrostEd25519Dkg<S> {
         self.storage()
             .await?
             .add_part2_received_package(identifier, package)
-            .await
+            .await?;
+
+        // +2 where:
+        // +1 here so that no new database query is made for a count of all parties
+        // +1 since current party is also part of the DKG
+        if party_count + 2 == maximum_signers as usize {
+            self.frost_dkg_state_transition().await?;
+        }
+
+        Ok(())
     }
 
     async fn send_part2(
@@ -214,5 +233,49 @@ impl<S: FrostDkgEd25519Storage + Clone> FrostDkg for FrostEd25519Dkg<S> {
         Self::DkgGenericError,
     > {
         self.storage().await?.get_part2_package(identifier).await
+    }
+
+    async fn part3(&self) -> Result<FrostPart3Output<Self::DkgCipherSuite>, Self::DkgGenericError> {
+        let state = self.storage().await?.get_state().await?;
+
+        if state != FrostDkgState::Part3 {
+            return Err(FrostDkgError::InvalidDkgState(
+                "Expected FROST Dkg to be `Part3` since no DKG has been performed at this point.",
+            ));
+        }
+
+        let mut part2_secret = self.storage().await?.get_part2_secret().await?;
+        let part1_packages = self
+            .storage()
+            .await?
+            .get_all_part1_received_packages()
+            .await?;
+        let part2_packages = self
+            .storage()
+            .await?
+            .get_all_part2_received_packages()
+            .await?;
+
+        let (secret, public_package) =
+            frost_core::keys::dkg::part3(&part2_secret, &part1_packages, &part2_packages)
+                .map_err(|error| FrostDkgError::Part3Finalize(error.to_string()))?;
+
+        let storage = self.storage().await?;
+        let identifier = storage.get_identifier().await?;
+        let maximum_signers = storage.get_maximum_signers().await?;
+        let minimum_signers = storage.get_minimum_signers().await?;
+
+        part2_secret.zeroize();
+        self.storage().await?.clear().await?;
+
+        self.frost_dkg_state_transition().await?;
+
+        Ok(FrostPart3Output {
+            identifier,
+            maximum_signers,
+            minimum_signers,
+            secret,
+            public_package,
+        })
     }
 }

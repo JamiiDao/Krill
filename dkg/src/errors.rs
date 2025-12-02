@@ -64,4 +64,8 @@ pub enum FrostDkgError {
     Ed25519PackageDeserializePart2(String),
     #[error("Unable to serialize a FROST DKG part 2 received package for storage. Error: `{0}`.")]
     Ed25519Sha512Round2PackageSerialize(String),
+    #[error("Unable to finalize FROST DKG part3. Error: `{0}`.")]
+    Part3Finalize(String),
+    #[error("Unable to create a fixed size byte array from a slice. Err: `{0}`.")]
+    ToByteArray(&'static str),
 }
