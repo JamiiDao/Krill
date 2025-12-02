@@ -12,7 +12,7 @@ use frost_ed25519::{
 
 use crate::{
     FrostDkg, FrostDkgEd25519Storage, FrostDkgError, FrostDkgMemStorage, FrostDkgResult,
-    FrostDkgState, FrostDkgStorage, RandomBytes,
+    FrostDkgState, FrostDkgStorage, FrostPart1Output, FrostPart2Output, RandomBytes,
 };
 
 #[derive(Default)]
@@ -35,6 +35,10 @@ impl<S: FrostDkgEd25519Storage + Clone> FrostDkg for FrostEd25519Dkg<S> {
         Self::DkgGenericError,
     > {
         Ok(self.0.clone())
+    }
+
+    async fn state(&self) -> Result<FrostDkgState, Self::DkgGenericError> {
+        self.storage().await?.get_state().await
     }
 
     fn generate_identifier(
@@ -70,7 +74,7 @@ impl<S: FrostDkgEd25519Storage + Clone> FrostDkg for FrostEd25519Dkg<S> {
         Ok(state)
     }
 
-    async fn part1(&self) -> Result<(), Self::DkgGenericError> {
+    async fn part1(&self) -> Result<FrostPart1Output<Self::DkgCipherSuite>, Self::DkgGenericError> {
         let storage = self.storage().await?;
 
         let current_state = storage.get_state().await?;
@@ -93,10 +97,13 @@ impl<S: FrostDkgEd25519Storage + Clone> FrostDkg for FrostEd25519Dkg<S> {
         )
         .map_err(|error| FrostDkgError::Part1KeyGenerationError(error.to_string()))?;
 
-        storage.set_part1_package(secret, package).await?;
+        storage.set_part1_package(secret, package.clone()).await?;
         self.frost_dkg_state_transition().await?;
 
-        Ok(())
+        Ok(FrostPart1Output {
+            identifier,
+            package,
+        })
     }
 
     async fn receive_part1(
@@ -104,26 +111,108 @@ impl<S: FrostDkgEd25519Storage + Clone> FrostDkg for FrostEd25519Dkg<S> {
         identifier: frost_core::Identifier<Self::DkgCipherSuite>,
         package: frost_core::keys::dkg::round1::Package<Self::DkgCipherSuite>,
     ) -> Result<(), Self::DkgGenericError> {
+        let state = self.storage().await?.get_state().await?;
+        let maximum_signers = self.storage().await?.get_maximum_signers().await?;
+        let party_count = self
+            .storage()
+            .await?
+            .part1_received_packages_count()
+            .await?;
+
+        if state != FrostDkgState::Part1 {
+            return Err(FrostDkgError::InvalidDkgState(
+                "Expected FROST Dkg to be `Part1` since no DKG has been performed at this point.",
+            ));
+        }
+
+        if party_count >= maximum_signers as usize {
+            return Err(FrostDkgError::Part1MaximumPartiesReached)?;
+        }
+
         self.storage()
             .await?
             .add_part1_received_package(identifier, package)
             .await?;
+
+        // +2 where:
+        // +1 here so that no new database query is made for a count of all parties
+        // +1 since current party is also part of the DKG
+        if party_count + 2 == maximum_signers as usize {
+            self.frost_dkg_state_transition().await?;
+        }
 
         Ok(())
     }
 
     async fn send_part1(
         &self,
-    ) -> Result<
-        (
-            frost_core::Identifier<Self::DkgCipherSuite>,
-            frost_core::keys::dkg::round1::Package<Self::DkgCipherSuite>,
-        ),
-        Self::DkgGenericError,
-    > {
+    ) -> Result<FrostPart1Output<Self::DkgCipherSuite>, Self::DkgGenericError> {
         let identifier = self.storage().await?.get_identifier().await?;
         let part_1_package = self.storage().await?.get_part1_public_package().await?;
 
-        Ok((identifier, part_1_package))
+        Ok(FrostPart1Output {
+            identifier,
+            package: part_1_package,
+        })
+    }
+
+    async fn part2(
+        &self,
+    ) -> Result<crate::FrostPart2Output<Self::DkgCipherSuite>, Self::DkgGenericError> {
+        let state = self.state().await?;
+
+        if state != FrostDkgState::Part2 {
+            return Err(FrostDkgError::InvalidFrostDkgState(state.to_string()));
+        }
+
+        let part1_packages = self
+            .storage()
+            .await?
+            .get_all_part1_received_packages()
+            .await?;
+        let part1_secret = self.storage().await?.get_part1_secret_package().await?;
+
+        let (part2_secret, part2_packages) = frost::keys::dkg::part2(part1_secret, &part1_packages)
+            .map_err(|error| FrostDkgError::Part2KeyGenerationError(error.to_string()))?;
+
+        self.storage()
+            .await?
+            .set_part2_package(part2_secret, &part2_packages)
+            .await?;
+
+        let identifier = self.storage().await?.get_identifier().await?;
+
+        Ok(FrostPart2Output {
+            identifier,
+            packages: part2_packages,
+        })
+    }
+
+    async fn receive_part2(
+        &self,
+        identifier: frost_core::Identifier<Self::DkgCipherSuite>,
+        package: frost_core::keys::dkg::round2::Package<Self::DkgCipherSuite>,
+    ) -> Result<(), Self::DkgGenericError> {
+        let state = self.storage().await?.get_state().await?;
+
+        if state != FrostDkgState::Part2 {
+            return Err(FrostDkgError::InvalidDkgState(
+                "Expected FROST Dkg to be `Part2` since no DKG has been performed at this point.",
+            ));
+        }
+        self.storage()
+            .await?
+            .add_part2_received_package(identifier, package)
+            .await
+    }
+
+    async fn send_part2(
+        &self,
+        identifier: &frost_core::Identifier<Self::DkgCipherSuite>,
+    ) -> Result<
+        Option<frost_core::keys::dkg::round2::Package<Self::DkgCipherSuite>>,
+        Self::DkgGenericError,
+    > {
+        self.storage().await?.get_part2_package(identifier).await
     }
 }

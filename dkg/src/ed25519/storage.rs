@@ -25,15 +25,25 @@ use crate::{
     FrostDkgEd25519Storage, FrostDkgError, FrostDkgResult, FrostDkgState, FrostDkgStorage,
 };
 
-pub type Round1PackageBytes = Vec<u8>;
 pub type Ed25519IdentifierBytes = Vec<u8>;
+pub type Round1PackageBytes = Vec<u8>;
+pub type Round2PackageBytes = BTreeMap<Vec<u8>, Vec<u8>>;
 
 #[derive(Zeroize, SchemaRead, SchemaWrite, Default)]
-pub struct Round1SecretBytes(Vec<u8>);
+pub struct Part1SecretBytes(Vec<u8>);
 
-impl fmt::Debug for Round1SecretBytes {
+impl fmt::Debug for Part1SecretBytes {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Round1SecretBytes<Redacted>")
+        write!(f, "Part1SecretBytes<Redacted>")
+    }
+}
+
+#[derive(Zeroize, SchemaRead, SchemaWrite, Default)]
+pub struct Part2SecretBytes(Vec<u8>);
+
+impl fmt::Debug for Part2SecretBytes {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Part2SecretBytes<Redacted>")
     }
 }
 
@@ -44,9 +54,12 @@ pub struct FrostDkgMemStorage {
     maximum_signers: u16,
     minimum_signers: u16,
     dkg_state: FrostDkgState,
-    part1_secret: Round1SecretBytes,
+    part1_secret: Part1SecretBytes,
     part1_package: Round1PackageBytes,
     received_part1_packages: BTreeMap<Ed25519IdentifierBytes, Round1PackageBytes>,
+    part2_secret: Part2SecretBytes,
+    part2_package: Round2PackageBytes,
+    received_part2_packages: BTreeMap<Ed25519IdentifierBytes, Round1PackageBytes>,
 }
 
 impl FrostDkgMemStorage {
@@ -121,12 +134,12 @@ impl<C: Ciphersuite, E: core::error::Error + std::convert::From<FrostDkgError>>
     ) -> Result<(), E> {
         let secret_bytes = secret
             .serialize()
-            .map_err(|error| FrostDkgError::Ed25519Sha512Round1SecretPackage(error.to_string()))?;
+            .map_err(|error| FrostDkgError::Ed25519Sha512Part1SecretPackage(error.to_string()))?;
         let package_bytes = package
             .serialize()
-            .map_err(|error| FrostDkgError::Ed25519Sha512Round1Package(error.to_string()))?;
+            .map_err(|error| FrostDkgError::Ed25519Sha512Part1Package(error.to_string()))?;
 
-        self.write().await.part1_secret = Round1SecretBytes(secret_bytes);
+        self.write().await.part1_secret = Part1SecretBytes(secret_bytes);
         self.write().await.part1_package = package_bytes;
 
         secret.zeroize();
@@ -235,5 +248,106 @@ impl<C: Ciphersuite, E: core::error::Error + std::convert::From<FrostDkgError>>
             })?;
 
         Ok(packages)
+    }
+
+    async fn part1_received_packages_count(&self) -> Result<usize, E> {
+        Ok(self.read().await.received_part1_packages.len())
+    }
+
+    async fn set_part2_package(
+        &self,
+        secret: frost_core::keys::dkg::round2::SecretPackage<C>,
+        packages: &BTreeMap<frost_core::Identifier<C>, frost_core::keys::dkg::round2::Package<C>>,
+    ) -> Result<(), E> {
+        let secret_bytes = Part2SecretBytes(secret.serialize().map_err(|error| {
+            FrostDkgError::Ed25519Sha512Part2SecretSerialize(error.to_string())
+        })?);
+        let package_bytes = packages
+            .iter()
+            .map(|(identifier, package)| {
+                let identifier_bytes = identifier.serialize();
+                let part2_package_bytes = package.serialize().map_err(|error| {
+                    FrostDkgError::Ed25519Sha512Part2PackageDeserialize(error.to_string())
+                })?;
+
+                Ok((identifier_bytes, part2_package_bytes))
+            })
+            .collect::<Result<Round2PackageBytes, E>>()?;
+
+        self.write().await.part2_secret = secret_bytes;
+        self.write().await.part2_package = package_bytes;
+
+        Ok(())
+    }
+
+    async fn get_part2_secret(&self) -> Result<frost_core::keys::dkg::round2::SecretPackage<C>, E> {
+        let secret = frost_core::keys::dkg::round2::SecretPackage::deserialize(
+            self.write().await.part2_secret.0.as_slice(),
+        )
+        .map_err(|error| FrostDkgError::Ed25519Sha512Part2SecretDeserialize(error.to_string()))?;
+
+        self.write().await.part2_secret.zeroize();
+
+        Ok(secret)
+    }
+
+    async fn get_part2_package(
+        &self,
+        identifier: &frost_core::Identifier<C>,
+    ) -> Result<Option<frost_core::keys::dkg::round2::Package<C>>, E> {
+        Ok(self
+            .write()
+            .await
+            .part2_package
+            .get(&identifier.serialize())
+            .map(|package_bytes| {
+                frost_core::keys::dkg::round2::Package::<C>::deserialize(package_bytes).map_err(
+                    |error| FrostDkgError::Ed25519DeserializePart2Package(error.to_string()),
+                )
+            })
+            .transpose()?)
+    }
+
+    async fn get_all_part2_packages(
+        &self,
+    ) -> Result<BTreeMap<frost_core::Identifier<C>, frost_core::keys::dkg::round2::Package<C>>, E>
+    {
+        self.write()
+            .await
+            .part2_package
+            .iter()
+            .map(|(identifier_bytes, package_bytes)| {
+                let identifier =
+                    frost_core::Identifier::deserialize(identifier_bytes).map_err(|error| {
+                        FrostDkgError::Ed25519Sha512IdentifierDeserializePart2(error.to_string())
+                    })?;
+                let package = frost_core::keys::dkg::round2::Package::deserialize(package_bytes)
+                    .map_err(|error| {
+                        FrostDkgError::Ed25519PackageDeserializePart2(error.to_string())
+                    })?;
+
+                Ok((identifier, package))
+            })
+            .collect::<Result<
+                BTreeMap<frost_core::Identifier<C>, frost_core::keys::dkg::round2::Package<C>>,
+                E,
+            >>()
+    }
+
+    async fn add_part2_received_package(
+        &self,
+        identifier: frost_core::Identifier<C>,
+        package: frost_core::keys::dkg::round2::Package<C>,
+    ) -> Result<(), E> {
+        let package_bytes = package.serialize().map_err(|error| {
+            FrostDkgError::Ed25519Sha512Round2PackageSerialize(error.to_string())
+        })?;
+
+        self.write()
+            .await
+            .received_part2_packages
+            .insert(identifier.serialize(), package_bytes);
+
+        Ok(())
     }
 }

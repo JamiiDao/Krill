@@ -128,6 +128,36 @@ fn main() {
                 .await
                 .unwrap();
         }
+
+        {
+            // Part2
+            ed25519_dkg_party1.part2().await.unwrap();
+            ed25519_dkg_party2.part2().await.unwrap();
+
+            let party1_part2_package_to_send_to_party2 = ed25519_dkg_party1
+                .send_part2(&party2_identifier)
+                .await
+                .unwrap()
+                .unwrap();
+            let party2_part2_package_to_send_to_party1 = ed25519_dkg_party2
+                .send_part2(&party1_identifier)
+                .await
+                .unwrap()
+                .unwrap();
+
+            ed25519_dkg_party1
+                .receive_part2(party2_identifier, party2_part2_package_to_send_to_party1)
+                .await
+                .unwrap();
+            ed25519_dkg_party2
+                .receive_part2(party1_identifier, party1_part2_package_to_send_to_party2)
+                .await
+                .unwrap();
+        }
+
+        {
+            // Part3
+        }
     })
 }
 

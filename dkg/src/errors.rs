@@ -12,10 +12,10 @@ pub enum FrostDkgError {
     IdentifierAlreadyExists,
     #[error("There must be at least two signers for perform distributed key generation")]
     ThereMustBeAtLeast2Signers,
-    #[error("Unable to serialize an Ed25519 secret package. Error: `{0}`.")]
-    Ed25519Sha512Round1SecretPackage(String),
-    #[error("Unable to serialize an Ed25519 public package. Error: `{0}`.")]
-    Ed25519Sha512Round1Package(String),
+    #[error("Unable to serialize an Ed25519 part1 secret package. Error: `{0}`.")]
+    Ed25519Sha512Part1SecretPackage(String),
+    #[error("Unable to serialize an Ed25519 part1 public package. Error: `{0}`.")]
+    Ed25519Sha512Part1Package(String),
     #[error("Unable to deserialize an Ed25519Sha512 Identifier. Error: `{0}`.")]
     Ed25519Sha512IdentifierDeserialize(String),
     #[error("Unable to deserialize an Ed25519Sha512 Part1 secret. Error: `{0}`.")]
@@ -42,4 +42,26 @@ pub enum FrostDkgError {
         "Unable to deserialize the part1 package when fetching all part1 packages. Error: `{0}`."
     )]
     Ed25519Part1DeserializeAll(String),
+    #[error("The maximum number of parties has been reached yet more part1 packages have been received.")]
+    Part1MaximumPartiesReached,
+    #[error("The maximum number of parties has been reached yet more part2 packages have been received.")]
+    Part2MaximumPartiesReached,
+    #[error("Unable to serialize part2 secret into bytes for storage")]
+    Ed25519Sha512Part2SecretSerialize(String),
+    #[error("Unable to deserialize part2 secret into bytes for storage")]
+    Ed25519Sha512Part2SecretDeserialize(String),
+    #[error("Unable to serialize part2 public package into bytes for storage")]
+    Ed25519Sha512Part2PackageDeserialize(String),
+    #[error("Current FROST DKG state is `{0}` yet FROST DKG state is supposed to be Part 2")]
+    InvalidFrostDkgState(String),
+    #[error("Unable to perform key generation for part 2. Error: `{0}`.")]
+    Part2KeyGenerationError(String),
+    #[error("Unable to deserialize FROST DKG part2 package. Error: `{0}`.")]
+    Ed25519DeserializePart2Package(String),
+    #[error("Unable to deserialize FROST DKG part 2 identifier from storage. Error: `{0}`.")]
+    Ed25519Sha512IdentifierDeserializePart2(String),
+    #[error("Unable to deserialize FROST DKG part 2 package from storage. Error: `{0}`.")]
+    Ed25519PackageDeserializePart2(String),
+    #[error("Unable to serialize a FROST DKG part 2 received package for storage. Error: `{0}`.")]
+    Ed25519Sha512Round2PackageSerialize(String),
 }
