@@ -18,6 +18,8 @@ pub trait FrostDkg {
         >,
     >;
 
+    fn state(&self) -> impl Future<Output = Result<FrostDkgState, Self::DkgGenericError>>;
+
     fn generate_identifier(
         &self,
         identifier: impl AsRef<[u8]>,
@@ -31,7 +33,9 @@ pub trait FrostDkg {
         &self,
     ) -> impl Future<Output = Result<FrostDkgState, Self::DkgGenericError>>;
 
-    fn part1(&self) -> impl Future<Output = Result<(), Self::DkgGenericError>>;
+    fn part1(
+        &self,
+    ) -> impl Future<Output = Result<FrostPart1Output<Self::DkgCipherSuite>, Self::DkgGenericError>>;
 
     fn receive_part1(
         &self,
@@ -41,12 +45,24 @@ pub trait FrostDkg {
 
     fn send_part1(
         &self,
+    ) -> impl Future<Output = Result<FrostPart1Output<Self::DkgCipherSuite>, Self::DkgGenericError>>;
+
+    fn part2(
+        &self,
+    ) -> impl Future<Output = Result<FrostPart2Output<Self::DkgCipherSuite>, Self::DkgGenericError>>;
+
+    fn receive_part2(
+        &self,
+        identifier: frost_core::Identifier<Self::DkgCipherSuite>,
+        package: frost_core::keys::dkg::round2::Package<Self::DkgCipherSuite>,
+    ) -> impl Future<Output = Result<(), Self::DkgGenericError>>;
+
+    fn send_part2(
+        &self,
+        identifier: &frost_core::Identifier<Self::DkgCipherSuite>,
     ) -> impl Future<
         Output = Result<
-            (
-                frost_core::Identifier<Self::DkgCipherSuite>,
-                frost_core::keys::dkg::round1::Package<Self::DkgCipherSuite>,
-            ),
+            Option<frost_core::keys::dkg::round2::Package<Self::DkgCipherSuite>>,
             Self::DkgGenericError,
         >,
     >;
@@ -116,4 +132,48 @@ pub trait FrostDkgStorage<C: Ciphersuite, E: core::error::Error> {
             E,
         >,
     >;
+
+    fn part1_received_packages_count(&self) -> impl Future<Output = Result<usize, E>>;
+
+    fn set_part2_package(
+        &self,
+        secret: frost_core::keys::dkg::round2::SecretPackage<C>,
+        packages: &BTreeMap<frost_core::Identifier<C>, frost_core::keys::dkg::round2::Package<C>>,
+    ) -> impl Future<Output = Result<(), E>>;
+
+    fn add_part2_received_package(
+        &self,
+        identifier: frost_core::Identifier<C>,
+        package: frost_core::keys::dkg::round2::Package<C>,
+    ) -> impl Future<Output = Result<(), E>>;
+
+    fn get_part2_secret(
+        &self,
+    ) -> impl Future<Output = Result<frost_core::keys::dkg::round2::SecretPackage<C>, E>>;
+
+    fn get_part2_package(
+        &self,
+        identifier: &frost_core::Identifier<C>,
+    ) -> impl Future<Output = Result<Option<frost_core::keys::dkg::round2::Package<C>>, E>>;
+
+    fn get_all_part2_packages(
+        &self,
+    ) -> impl Future<
+        Output = Result<
+            BTreeMap<frost_core::Identifier<C>, frost_core::keys::dkg::round2::Package<C>>,
+            E,
+        >,
+    >;
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct FrostPart1Output<C: Ciphersuite> {
+    pub identifier: frost_core::Identifier<C>,
+    pub package: frost_core::keys::dkg::round1::Package<C>,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct FrostPart2Output<C: Ciphersuite> {
+    pub identifier: frost_core::Identifier<C>,
+    pub packages: BTreeMap<frost_core::Identifier<C>, frost_core::keys::dkg::round2::Package<C>>,
 }
