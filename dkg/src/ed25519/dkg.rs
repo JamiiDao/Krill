@@ -6,6 +6,29 @@ use crate::{
     FrostPart1Output, FrostPart2Output, FrostPart3Output, RandomBytes,
 };
 
+pub struct Ed25519Sha512IdentifierGenerator;
+
+impl Ed25519Sha512IdentifierGenerator {
+    pub fn hashed_identifier(
+        identifier: impl AsRef<[u8]>,
+    ) -> Result<frost_core::Identifier<Ed25519Sha512>, FrostDkgError> {
+        let identifier_bytes = *blake3::hash(identifier.as_ref()).as_bytes();
+
+        let scalar_data = u128::from_le_bytes(identifier_bytes[0..16].try_into().or(Err(
+            FrostDkgError::ToByteArray("Unable to cast the slice tto a [0u8;16] byte array"),
+        ))?);
+
+        Ed25519Identifier::new(scalar_data.into())
+            .or(Err(FrostDkgError::IdentifierDerivationNotSupported))
+    }
+
+    pub fn random_identifier() -> Result<Ed25519Identifier, FrostDkgError> {
+        let identifier = RandomBytes::<32>::generate();
+        Ed25519Identifier::derive(&*identifier.take())
+            .or(Err(FrostDkgError::IdentifierDerivationNotSupported))
+    }
+}
+
 #[derive(Default)]
 pub struct FrostEd25519Dkg<S: FrostDkgEd25519Storage>(S);
 
@@ -36,20 +59,11 @@ impl<S: FrostDkgEd25519Storage + Clone> FrostDkg for FrostEd25519Dkg<S> {
         &self,
         identifier: impl AsRef<[u8]>,
     ) -> Result<frost_core::Identifier<Self::DkgCipherSuite>, Self::DkgGenericError> {
-        let identifier_bytes = *blake3::hash(identifier.as_ref()).as_bytes();
-
-        let scalar_data = u128::from_le_bytes(identifier_bytes[0..16].try_into().or(Err(
-            FrostDkgError::ToByteArray("Unable to cast the slice tto a [0u8;16] byte array"),
-        ))?);
-
-        Ed25519Identifier::new(scalar_data.into())
-            .or(Err(FrostDkgError::IdentifierDerivationNotSupported))
+        Ed25519Sha512IdentifierGenerator::hashed_identifier(identifier.as_ref())
     }
 
     fn generate_identifier_random(&self) -> Result<Ed25519Identifier, FrostDkgError> {
-        let identifier = RandomBytes::<32>::generate();
-        Ed25519Identifier::derive(&*identifier.take())
-            .or(Err(FrostDkgError::IdentifierDerivationNotSupported))
+        Ed25519Sha512IdentifierGenerator::random_identifier()
     }
 
     async fn frost_dkg_state_transition(&self) -> Result<FrostDkgState, Self::DkgGenericError> {

@@ -4,12 +4,11 @@ use std::collections::BTreeMap;
 use async_dup::Arc;
 use async_lock::RwLock;
 use frost_core::Ciphersuite;
+use frost_ed25519::Ed25519Sha512;
 use wincode::{SchemaRead, SchemaWrite};
 use zeroize::Zeroize;
 
-use crate::{
-    FrostDkgEd25519Storage, FrostDkgError, FrostDkgState, FrostDkgStorage,
-};
+use crate::{FrostDkgError, FrostDkgState, FrostDkgStorage};
 
 pub type Ed25519IdentifierBytes = Vec<u8>;
 pub type Round1PackageBytes = Vec<u8>;
@@ -355,3 +354,5 @@ impl<C: Ciphersuite, E: core::error::Error + std::convert::From<FrostDkgError>>
         Ok(())
     }
 }
+
+pub trait FrostDkgEd25519Storage: FrostDkgStorage<Ed25519Sha512, FrostDkgError> {}

@@ -1,9 +1,8 @@
 use std::{collections::BTreeMap, future::Future};
 
 use frost_core::Ciphersuite;
-use frost_ed25519::Ed25519Sha512;
 
-use crate::{FrostDkgError, FrostDkgState};
+use crate::FrostDkgState;
 
 pub trait FrostDkg {
     type DkgGenericError: core::error::Error;
@@ -71,8 +70,6 @@ pub trait FrostDkg {
         &self,
     ) -> impl Future<Output = Result<FrostPart3Output<Self::DkgCipherSuite>, Self::DkgGenericError>>;
 }
-
-pub trait FrostDkgEd25519Storage: FrostDkgStorage<Ed25519Sha512, FrostDkgError> {}
 
 pub trait FrostDkgStorage<C: Ciphersuite, E: core::error::Error> {
     fn set_context_string(&self, context_str: &'static str) -> impl Future<Output = Result<(), E>>;
