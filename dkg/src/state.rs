@@ -1,9 +1,9 @@
 use core::fmt;
 
-use wincode::{SchemaRead, SchemaWrite};
+use serde::{Deserialize, Serialize};
 
 #[derive(
-    Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy, Default, SchemaRead, SchemaWrite,
+    Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy, Default, Serialize, Deserialize,
 )]
 pub enum FrostDkgState {
     #[default]

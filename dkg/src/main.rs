@@ -1,8 +1,8 @@
 use async_dup::Arc;
 use async_lock::RwLock;
 
-mod ed25519;
-pub use ed25519::*;
+mod ops;
+pub use ops::*;
 
 mod state;
 pub use state::*;
@@ -23,7 +23,7 @@ fn main() {
         let party2 = "bob@example";
 
         let ed25519_dkg_party1 =
-            FrostEd25519Dkg::new(Arc::new(RwLock::new(FrostDkgMemStorage::init())));
+            FrostEd25519Dkg::new(Arc::new(RwLock::new(FrostEd25519DkgMemStorage::init())));
 
         {
             //Init party 1
@@ -54,7 +54,7 @@ fn main() {
         }
 
         let ed25519_dkg_party2 =
-            FrostEd25519Dkg::new(Arc::new(RwLock::new(FrostDkgMemStorage::init())));
+            FrostEd25519Dkg::new(Arc::new(RwLock::new(FrostEd25519DkgMemStorage::init())));
 
         {
             //Init party 2
@@ -160,10 +160,91 @@ fn main() {
                 .unwrap();
         }
 
+        // Part3
+        let party1_keys_data = ed25519_dkg_party1.part3().await.unwrap();
+        let party2_keys_data = ed25519_dkg_party2.part3().await.unwrap();
+
+        let party1_signing = FrostGenericSigning::new(Arc::new(RwLock::new(
+            FrostEd25519SigningStorage::init(party1_keys_data),
+        )));
+        let party2_signing = FrostGenericSigning::new(Arc::new(RwLock::new(
+            FrostEd25519SigningStorage::init(party2_keys_data),
+        )));
+
+        let message = "Hello FROST!";
+        let message_hash = *blake3::hash(message.as_bytes()).as_bytes();
+        let participants = &[
+            // party1_signing.identifier().await.unwrap(),
+            party2_signing.identifier().await.unwrap(),
+        ];
+
         {
-            // Part3
-            ed25519_dkg_party1.part3().await.unwrap();
-            ed25519_dkg_party2.part3().await.unwrap();
+            // Coordinator is also signer
+            let signal_round1 = party1_signing
+                .signal_round1(message_hash, participants, true)
+                .await
+                .unwrap();
+            assert!(
+                party1_signing
+                    .get_coordinator_message(&message_hash)
+                    .await
+                    .unwrap()
+                    .unwrap()
+                    .state
+                    == SigningState::Round1
+            );
+
+            let round1_commit = party2_signing.round1_commit(signal_round1).await.unwrap();
+            let receive_round1_commit = party1_signing
+                .receive_round1_commit(round1_commit)
+                .await
+                .unwrap();
+
+            assert!(receive_round1_commit == SigningState::Round2);
+
+            let signing_package = party1_signing
+                .signing_package(&message_hash, true)
+                .await
+                .unwrap();
+
+            let round2 = party2_signing.round2_commit(signing_package).await.unwrap();
+            let receive_round2_shares = party1_signing.receive_round2_commit(round2).await.unwrap();
+
+            assert!(receive_round2_shares == SigningState::Aggregate);
+
+            assert!(
+                party1_signing
+                    .all_coordinator_messages()
+                    .await
+                    .unwrap()
+                    .len()
+                    == 1usize
+            );
+            assert!(party1_signing
+                .all_participant_messages()
+                .await
+                .unwrap()
+                .is_empty());
+
+            assert!(party2_signing
+                .all_coordinator_messages()
+                .await
+                .unwrap()
+                .is_empty());
+            assert!(
+                party2_signing
+                    .all_participant_messages()
+                    .await
+                    .unwrap()
+                    .len()
+                    == 1usize
+            );
+
+            let aggregate_signature_data = party1_signing.aggregate(message_hash).await.unwrap();
+            assert!(party2_signing
+                .verify_and_remove(&aggregate_signature_data)
+                .await
+                .is_ok())
         }
     })
 }
@@ -176,7 +257,7 @@ mod test {
     fn test_initialization() {
         smol::block_on(async {
             let ed25519_dkg =
-                FrostEd25519Dkg::new(Arc::new(RwLock::new(FrostDkgMemStorage::init())));
+                FrostEd25519Dkg::new(Arc::new(RwLock::new(FrostEd25519DkgMemStorage::init())));
 
             let ed25519_identifier = ed25519_dkg.generate_identifier_random().unwrap();
             ed25519_dkg

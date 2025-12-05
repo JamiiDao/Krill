@@ -11,7 +11,7 @@ impl<const N: usize> RandomBytes<N> {
         let mut rng = ChaCha12Rng::from_os_rng();
 
         let mut buffer = Zeroizing::new([0u8; N]);
-        rng.fill_bytes(&mut buffer.as_mut());
+        rng.fill_bytes(buffer.as_mut());
 
         Self(buffer)
     }
