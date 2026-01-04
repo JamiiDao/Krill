@@ -31,7 +31,6 @@ quinn = { version = "=0.11.9", default-features = false, features = [
     "runtime-smol",
     "rustls",
 ], optional = true }
-# rand = "0.9"
 blake3 = "1.8.2"
 frost-core = { version = "2.2.0", default-features = false, features = [
     "cheater-detection",
@@ -42,8 +41,9 @@ zeroize = { version = "1.8.2", default-features = false }
 rand_chacha = { version = "0.9" }
 async-dup = "1.2.4"
 async-lock = "3.4.1"
-async-io = "2.6.0"
-smol = "2.0.2"
-rand = "0.8"
+rand = "=0.8"
 bitcode = { version = "0.6.7", features = ["serde"] }
 serde = { version = "1.0.228", features = ["derive"] }
+
+[dev-dependencies]
+smol = "2.0.2"
