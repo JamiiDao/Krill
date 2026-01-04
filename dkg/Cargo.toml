@@ -19,10 +19,12 @@ quic-https = ["dep:quinn"]
 frost-p256 = { version = "=2.2.0", default-features = false, features = [
     "cheater-detection",
     "serialization",
+    "serde",
 ], optional = true }
 frost-ed25519 = { version = "=2.2.0", default-features = false, features = [
     "cheater-detection",
     "serialization",
+    "serde",
 ], optional = true }
 
 quinn = { version = "=0.11.9", default-features = false, features = [
@@ -33,6 +35,7 @@ quinn = { version = "=0.11.9", default-features = false, features = [
 blake3 = "1.8.2"
 frost-core = { version = "2.2.0", default-features = false, features = [
     "cheater-detection",
+    "serde",
 ] }
 thiserror = { version = "2.0.17", default-features = false }
 zeroize = { version = "1.8.2", default-features = false }
@@ -41,5 +44,6 @@ async-dup = "1.2.4"
 async-lock = "3.4.1"
 async-io = "2.6.0"
 smol = "2.0.2"
-wincode = { version = "0.1.2", features = ["derive"] }
 rand = "0.8"
+bitcode = { version = "0.6.7", features = ["serde"] }
+serde = { version = "1.0.228", features = ["derive"] }

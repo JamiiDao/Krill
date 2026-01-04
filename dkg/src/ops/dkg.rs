@@ -1,45 +1,53 @@
-use frost_ed25519::{self as frost, Ed25519Sha512, Identifier as Ed25519Identifier};
+use std::marker::PhantomData;
+
+use frost_core::Ciphersuite;
 use zeroize::Zeroize;
 
 use crate::{
-    FrostDkg, FrostDkgEd25519Storage, FrostDkgError, FrostDkgState, FrostDkgStorage,
-    FrostPart1Output, FrostPart2Output, FrostPart3Output, RandomBytes,
+    FrostDkg, FrostDkgError, FrostDkgState, FrostDkgStorage, FrostPart1Output, FrostPart2Output,
+    FrostSigningData, RandomBytes,
 };
 
-pub struct Ed25519Sha512IdentifierGenerator;
+pub struct IdentifierGenerator<C: Ciphersuite>(PhantomData<C>);
 
-impl Ed25519Sha512IdentifierGenerator {
+impl<C> IdentifierGenerator<C>
+where
+   <<<C as frost_core::Ciphersuite>::Group as frost_core::Group>::Field as frost_core::Field>::Scalar: std::convert::From<u128>,
+   C:Ciphersuite
+{
     pub fn hashed_identifier(
         identifier: impl AsRef<[u8]>,
-    ) -> Result<frost_core::Identifier<Ed25519Sha512>, FrostDkgError> {
+    ) -> Result<frost_core::Identifier<C>, FrostDkgError> {
         let identifier_bytes = *blake3::hash(identifier.as_ref()).as_bytes();
 
         let scalar_data = u128::from_le_bytes(identifier_bytes[0..16].try_into().or(Err(
             FrostDkgError::ToByteArray("Unable to cast the slice tto a [0u8;16] byte array"),
         ))?);
 
-        Ed25519Identifier::new(scalar_data.into())
+        frost_core::Identifier::<C>::new(scalar_data.into())
             .or(Err(FrostDkgError::IdentifierDerivationNotSupported))
     }
 
-    pub fn random_identifier() -> Result<Ed25519Identifier, FrostDkgError> {
+    pub fn random_identifier() -> Result<frost_core::Identifier<C>, FrostDkgError> {
         let identifier = RandomBytes::<32>::generate();
-        Ed25519Identifier::derive(&*identifier.take())
+        frost_core::Identifier::<C>::derive(&*identifier.take())
             .or(Err(FrostDkgError::IdentifierDerivationNotSupported))
     }
 }
 
-#[derive(Default)]
-pub struct FrostEd25519Dkg<S: FrostDkgEd25519Storage>(S);
+pub struct FrostGenericDkg<C: Ciphersuite, S: FrostDkgStorage<C, FrostDkgError>>(S, PhantomData<C>);
 
-impl<S: FrostDkgEd25519Storage> FrostEd25519Dkg<S> {
+impl<C: Ciphersuite, S: FrostDkgStorage<C, FrostDkgError>> FrostGenericDkg<C, S> {
     pub fn new(storage: S) -> Self {
-        Self(storage)
+        Self(storage, PhantomData)
     }
 }
 
-impl<S: FrostDkgEd25519Storage + Clone> FrostDkg for FrostEd25519Dkg<S> {
-    type DkgCipherSuite = Ed25519Sha512;
+impl<C: Ciphersuite, S: FrostDkgStorage<C, FrostDkgError> + Clone> FrostDkg
+    for FrostGenericDkg<C, S>
+where   <<<C as frost_core::Ciphersuite>::Group as frost_core::Group>::Field as frost_core::Field>::Scalar: std::convert::From<u128>
+{
+    type DkgCipherSuite = C;
     type DkgGenericError = FrostDkgError;
 
     async fn storage(
@@ -59,11 +67,13 @@ impl<S: FrostDkgEd25519Storage + Clone> FrostDkg for FrostEd25519Dkg<S> {
         &self,
         identifier: impl AsRef<[u8]>,
     ) -> Result<frost_core::Identifier<Self::DkgCipherSuite>, Self::DkgGenericError> {
-        Ed25519Sha512IdentifierGenerator::hashed_identifier(identifier.as_ref())
+        IdentifierGenerator::hashed_identifier(identifier.as_ref())
     }
 
-    fn generate_identifier_random(&self) -> Result<Ed25519Identifier, FrostDkgError> {
-        Ed25519Sha512IdentifierGenerator::random_identifier()
+    fn generate_identifier_random(
+        &self,
+    ) -> Result<frost_core::Identifier<Self::DkgCipherSuite>, FrostDkgError> {
+        IdentifierGenerator::random_identifier()
     }
 
     async fn frost_dkg_state_transition(&self) -> Result<FrostDkgState, Self::DkgGenericError> {
@@ -97,7 +107,7 @@ impl<S: FrostDkgEd25519Storage + Clone> FrostDkg for FrostEd25519Dkg<S> {
         let minimum_signers = storage.get_minimum_signers().await?;
         let identifier = storage.get_identifier().await?;
 
-        let (secret, package) = frost::keys::dkg::part1(
+        let (secret, package) = frost_core::keys::dkg::part1(
             identifier,
             maximum_signers,
             minimum_signers,
@@ -180,12 +190,13 @@ impl<S: FrostDkgEd25519Storage + Clone> FrostDkg for FrostEd25519Dkg<S> {
             .await?;
         let part1_secret = self.storage().await?.get_part1_secret_package().await?;
 
-        let (part2_secret, part2_packages) = frost::keys::dkg::part2(part1_secret, &part1_packages)
-            .map_err(|error| FrostDkgError::Part2KeyGenerationError(error.to_string()))?;
+        let (part2_secret, part2_packages) =
+            frost_core::keys::dkg::part2(part1_secret, &part1_packages)
+                .map_err(|error| FrostDkgError::Part2KeyGenerationError(error.to_string()))?;
 
         self.storage()
             .await?
-            .set_part2_package(part2_secret, &part2_packages)
+            .set_part2_package(part2_secret, part2_packages.clone())
             .await?;
 
         let identifier = self.storage().await?.get_identifier().await?;
@@ -249,7 +260,7 @@ impl<S: FrostDkgEd25519Storage + Clone> FrostDkg for FrostEd25519Dkg<S> {
         self.storage().await?.get_part2_package(identifier).await
     }
 
-    async fn part3(&self) -> Result<FrostPart3Output<Self::DkgCipherSuite>, Self::DkgGenericError> {
+    async fn part3(&self) -> Result<FrostSigningData<Self::DkgCipherSuite>, Self::DkgGenericError> {
         let state = self.storage().await?.get_state().await?;
 
         if state != FrostDkgState::Part3 {
@@ -278,18 +289,20 @@ impl<S: FrostDkgEd25519Storage + Clone> FrostDkg for FrostEd25519Dkg<S> {
         let identifier = storage.get_identifier().await?;
         let maximum_signers = storage.get_maximum_signers().await?;
         let minimum_signers = storage.get_minimum_signers().await?;
+        let participants = part2_packages.keys().cloned().collect::<Vec<frost_core::Identifier<Self::DkgCipherSuite>>>();
 
         part2_secret.zeroize();
         self.storage().await?.clear().await?;
 
         self.frost_dkg_state_transition().await?;
 
-        Ok(FrostPart3Output {
+        Ok(FrostSigningData {
             identifier,
             maximum_signers,
             minimum_signers,
             secret,
             public_package,
+            participants
         })
     }
 }

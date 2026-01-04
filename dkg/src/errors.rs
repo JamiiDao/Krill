@@ -1,6 +1,8 @@
+use crate::{Message32ByteHash, SigningState};
+
 pub type FrostDkgResult<T> = Result<T, FrostDkgError>;
 
-#[derive(Debug, PartialEq, Eq, thiserror::Error)]
+#[derive(Debug, PartialEq, Eq, Clone, thiserror::Error)]
 pub enum FrostDkgError {
     #[error("Global storage is not initialized yet it is being called")]
     GlobalStorageNotInitialized,
@@ -10,62 +12,96 @@ pub enum FrostDkgError {
     IdentifierDerivationNotSupported,
     #[error("Frost Identifier already exists in storage")]
     IdentifierAlreadyExists,
+    #[error("The FROST DKG Identifier Secret was not found")]
+    DkgIdentifierNotFound,
+    #[error("The FROST DKG Round1 Secret was not found")]
+    Round1SecretNotFound,
+    #[error("The FROST DKG Round1 Secret was not found")]
+    Part1PublicPackageNotFound,
+    #[error("The FROST DKG Round2 Secret was not found")]
+    Part2SecretNotFound,
+    #[error("The FROST Signing Round 1 Nonces are not found for the message")]
+    Round1NoncesNotFound,
+    #[error("The FROST Signing Round 1 Commitments are not found for the message")]
+    Round1CommitmentsNotFound,
     #[error("There must be at least two signers for perform distributed key generation")]
     ThereMustBeAtLeast2Signers,
-    #[error("Unable to serialize an Ed25519 part1 secret package. Error: `{0}`.")]
-    Ed25519Sha512Part1SecretPackage(String),
-    #[error("Unable to serialize an Ed25519 part1 public package. Error: `{0}`.")]
-    Ed25519Sha512Part1Package(String),
-    #[error("Unable to deserialize an Ed25519Sha512 Identifier. Error: `{0}`.")]
-    Ed25519Sha512IdentifierDeserialize(String),
-    #[error("Unable to deserialize an Ed25519Sha512 Part1 secret. Error: `{0}`.")]
-    Ed25519Sha512Part1SecretDeserialize(String),
-    #[error("Unable to deserialize an Ed25519Sha512 Part1 public package. Error: `{0}`.")]
-    Ed25519Sha512Part1PublicPackageDeserialize(String),
     #[error("Attempted to transition FROST DKG state yet the state is already finalized")]
     DkgStateAlreadyFinalized,
     #[error("Invalid FROST DKG state. Error: `{0}`.")]
     InvalidDkgState(&'static str),
     #[error("Unable to perform key generation for part 1. Error: `{0}`")]
     Part1KeyGenerationError(String),
-    #[error("Unable to serialize the received part1 package. Error: `{0}`.")]
-    Ed25519SerializeReceivedPart1Package(String),
-    #[error(
-        "Unable to deserialize the received part1 package fetched from storage. Error: `{0}`."
-    )]
-    Ed25519DeserializeReceivedPart1Package(String),
-    #[error(
-        "Unable to deserialize the identifier when fetching all part1 packages. Error: `{0}`."
-    )]
-    Ed25519Sha512IdentifierDeserializeAll(String),
-    #[error(
-        "Unable to deserialize the part1 package when fetching all part1 packages. Error: `{0}`."
-    )]
-    Ed25519Part1DeserializeAll(String),
     #[error("The maximum number of parties has been reached yet more part1 packages have been received.")]
     Part1MaximumPartiesReached,
     #[error("The maximum number of parties has been reached yet more part2 packages have been received.")]
     Part2MaximumPartiesReached,
-    #[error("Unable to serialize part2 secret into bytes for storage")]
-    Ed25519Sha512Part2SecretSerialize(String),
-    #[error("Unable to deserialize part2 secret into bytes for storage")]
-    Ed25519Sha512Part2SecretDeserialize(String),
-    #[error("Unable to serialize part2 public package into bytes for storage")]
-    Ed25519Sha512Part2PackageDeserialize(String),
     #[error("Current FROST DKG state is `{0}` yet FROST DKG state is supposed to be Part 2")]
     InvalidFrostDkgState(String),
     #[error("Unable to perform key generation for part 2. Error: `{0}`.")]
     Part2KeyGenerationError(String),
-    #[error("Unable to deserialize FROST DKG part2 package. Error: `{0}`.")]
-    Ed25519DeserializePart2Package(String),
-    #[error("Unable to deserialize FROST DKG part 2 identifier from storage. Error: `{0}`.")]
-    Ed25519Sha512IdentifierDeserializePart2(String),
-    #[error("Unable to deserialize FROST DKG part 2 package from storage. Error: `{0}`.")]
-    Ed25519PackageDeserializePart2(String),
-    #[error("Unable to serialize a FROST DKG part 2 received package for storage. Error: `{0}`.")]
-    Ed25519Sha512Round2PackageSerialize(String),
     #[error("Unable to finalize FROST DKG part3. Error: `{0}`.")]
     Part3Finalize(String),
     #[error("Unable to create a fixed size byte array from a slice. Err: `{0}`.")]
     ToByteArray(&'static str),
+    #[error("Unable to deserialize PublicPackage. Error: `{0}`.")]
+    DeserializePublicPackage(String),
+    #[error("The message was not found in the list of message to perform distributed signing on.")]
+    MessageToSignNotFound,
+    #[error("The Signing Package for the message was not found. Has signing round 1 been done?")]
+    SigningPackageNotFound,
+    #[error("The round2 signing share was not found")]
+    SignatureShareNotFound,
+    #[error("The outcome signature of distributed signing was not found")]
+    AggregateSignatureNotFound,
+    #[error("The message hash that was provided is invalid")]
+    InvalidMessageToSign,
+    #[error("Frost distributed signing Round1 error. Error: `{0}`.")]
+    SigningRound1(String),
+    #[error("Round2 FROST distributed signing error. Error: `{0}`.")]
+    SigningRound2(String),
+    #[error("Encountered invalid participants: {as_hexes:?}", as_hexes = .0.iter().map(|value| 
+    {
+        bytes_as_hex(value)
+    }).collect::<Vec<String>>())]
+    InvalidParticipants(Vec<Vec<u8>>),
+    #[error("The message to signing already exists in the store therefore set operation skipped. Message hex: `{as_hex}`",as_hex = bytes_as_hex(.0))]
+    MessageToSignAlreadyExists(Message32ByteHash),
+    #[error("The current state of signing message `{message_hash}` is `{state}` instead of SigningState::Round1", message_hash = bytes_as_hex(.message_hash))]
+    ExpectedRound1SigningState {
+        message_hash: Message32ByteHash,
+        state: SigningState,
+    },
+    #[error("The current state of signing message `{message_hash}` is `{state}` instead of SigningState::Round2", message_hash = bytes_as_hex(.message_hash))]
+    ExpectedRound2SigningState {
+        message_hash: Message32ByteHash,
+        state: SigningState,
+    },
+    #[error("The current state of signing message `{message_hash}` is `{state}` instead of SigningState::Aggregate", message_hash = bytes_as_hex(.message_hash))]
+    ExpectedAggregateSigningState {
+        message_hash: Message32ByteHash,
+        state: SigningState,
+    },
+    #[error("A participant that is not allowed to sign this message  `{message_hash}`  tried to commit to the first round of signing the message. The offending participant ID is `{identifier}`.", message_hash = bytes_as_hex(.message_hash), identifier = bytes_as_hex(.participant))]
+    InvalidParticipant {
+        message_hash: Message32ByteHash,
+        participant: Vec<u8>,
+    },
+    #[error("The participant of Round2 signing has no Signing nonces or signing commitments. Try doing round1 first")]
+    SigningRound1NoncesAndCommitmentsNotFound,
+    #[error("Unable to aggregate the signatures. Error: `{0}`!")]
+    UnableToAggregateSignature(String),
+    #[error("The aggregate signature is valid but was unable to remove it from storage")]
+    UnableToRemoveValidSignedParticipantMessage,
+    #[error("The group signature verification failed for the given message. Error: `{0}`!")]
+    InvalidAggregateSignature(String),
+}
+
+fn bytes_as_hex(bytes: &[u8]) -> String {
+    bytes
+        .iter()
+        .map(|byte| format!("{:0x?} ", byte))
+        .collect::<String>()
+        .trim()
+        .to_string()
 }
