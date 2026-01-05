@@ -1,5 +1,5 @@
 [package]
-name = "frost-channels"
+name = "krill-frost"
 authors.workspace = true
 version.workspace = true
 license.workspace = true
@@ -25,19 +25,22 @@ frost-ed25519 = { version = "=2.2.0", default-features = false, features = [
     "serialization",
     "serde",
 ], optional = true }
-blake3 = "1.8.2"
 frost-core = { version = "2.2.0", default-features = false, features = [
     "cheater-detection",
     "serde",
 ] }
-thiserror = { version = "2.0.17", default-features = false }
-zeroize = { version = "1.8.2", default-features = false }
-rand_chacha = { version = "0.9", features = ["os_rng"] }
-async-dup = "1.2.4"
-async-lock = "3.4.1"
+
+
+blake3.workspace = true
+thiserror.workspace = true
+zeroize.workspace = true
+rand_chacha.workspace = true
+async-dup.workspace = true
+async-lock.workspace = true
+
 rand = "=0.8"
-bitcode = { version = "0.6.7", features = ["serde"] }
-serde = { version = "1.0.228", features = ["derive"] }
+serde.workspace = true
+redb = "3.1.0"
 
 [dev-dependencies]
-smol = "2.0.2"
+smol.workspace = true
