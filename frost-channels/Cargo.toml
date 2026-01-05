@@ -1,5 +1,5 @@
 [package]
-name = "frost-dkg-channel"
+name = "frost-channels"
 authors.workspace = true
 version.workspace = true
 license.workspace = true
@@ -10,10 +10,9 @@ categories.workspace = true
 edition.workspace = true
 
 [features]
-default = ["p256", "ed25519", "quic-https"]
+default = ["p256", "ed25519"]
 p256 = ["dep:frost-p256"]
 ed25519 = ["dep:frost-ed25519"]
-quic-https = ["dep:quinn"]
 
 [dependencies]
 frost-p256 = { version = "=2.2.0", default-features = false, features = [
@@ -26,11 +25,6 @@ frost-ed25519 = { version = "=2.2.0", default-features = false, features = [
     "serialization",
     "serde",
 ], optional = true }
-
-quinn = { version = "=0.11.9", default-features = false, features = [
-    "runtime-smol",
-    "rustls",
-], optional = true }
 blake3 = "1.8.2"
 frost-core = { version = "2.2.0", default-features = false, features = [
     "cheater-detection",
@@ -38,7 +32,7 @@ frost-core = { version = "2.2.0", default-features = false, features = [
 ] }
 thiserror = { version = "2.0.17", default-features = false }
 zeroize = { version = "1.8.2", default-features = false }
-rand_chacha = { version = "0.9" }
+rand_chacha = { version = "0.9", features = ["os_rng"] }
 async-dup = "1.2.4"
 async-lock = "3.4.1"
 rand = "=0.8"
