@@ -19,8 +19,7 @@ categories = ["cryptography::cryptocurrencies"]
 edition = "2021"
 
 [workspace.dependencies]
-bitcode = { version = "0.6.7", features = ["serde"] }
-serde = { version = "1.0.228", features = ["derive"] }
+bitcode = { version = "0.6.7" }
 blake3 = "1.8.2"
 thiserror = { version = "2.0.17", default-features = false }
 zeroize = { version = "1.8.2", default-features = false }
@@ -28,6 +27,8 @@ rand_chacha = { version = "0.9", features = ["os_rng"] }
 async-dup = "1.2.4"
 async-lock = "3.4.2"
 smol = "2.0.2"
+dirs = "6.0.0"
+fjall = { version = "3.0.1", default-features = false }
 
 # quinn = { version = "=0.11.9", default-features = false, features = [
 #     "runtime-smol",

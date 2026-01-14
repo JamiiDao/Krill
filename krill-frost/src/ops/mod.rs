@@ -1,14 +1,14 @@
 mod dkg;
 pub use dkg::*;
 
-mod dkg_storage;
-pub use dkg_storage::*;
+mod storage;
+pub use storage::*;
 
 mod signing;
 pub use signing::*;
 
-mod signing_storage;
-pub use signing_storage::*;
-
 mod helpers;
 pub use helpers::*;
+
+mod identifier_generator;
+pub use identifier_generator::*;

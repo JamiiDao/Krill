@@ -17,8 +17,7 @@ pub use csprng::*;
 mod test {
     use super::*;
 
-    use async_dup::Arc;
-    use async_lock::RwLock;
+    use super::FrostDistributedSigning;
 
     #[test]
     fn test_dkg_and_signing() {
@@ -28,16 +27,13 @@ mod test {
             let party2 = "bob@example";
 
             let ed25519_dkg_party1 =
-                FrostEd25519Dkg::new(Arc::new(RwLock::new(FrostEd25519DkgMemStorage::init())));
+                FrostEd25519Dkg::new(FrostEd25519Storage::init("party1".into()).await.unwrap());
 
             {
                 //Init party 1
                 let ed25519_identifier = ed25519_dkg_party1.generate_identifier(party1).unwrap();
                 ed25519_dkg_party1
-                    .storage()
-                    .await
-                    .unwrap()
-                    .set_identifier(ed25519_identifier)
+                    .set_identifier(&ed25519_identifier)
                     .await
                     .unwrap();
 
@@ -59,7 +55,7 @@ mod test {
             }
 
             let ed25519_dkg_party2 =
-                FrostEd25519Dkg::new(Arc::new(RwLock::new(FrostEd25519DkgMemStorage::init())));
+                FrostEd25519Dkg::new(FrostEd25519Storage::init("party2".into()).await.unwrap());
 
             {
                 //Init party 2
@@ -68,7 +64,7 @@ mod test {
                     .storage()
                     .await
                     .unwrap()
-                    .set_identifier(ed25519_identifier)
+                    .set_identifier(&ed25519_identifier)
                     .await
                     .unwrap();
 
@@ -169,19 +165,31 @@ mod test {
             let party1_keys_data = ed25519_dkg_party1.part3().await.unwrap();
             let party2_keys_data = ed25519_dkg_party2.part3().await.unwrap();
 
-            let party1_signing = FrostGenericSigning::new(Arc::new(RwLock::new(
-                FrostEd25519SigningStorage::init(party1_keys_data),
-            )));
-            let party2_signing = FrostGenericSigning::new(Arc::new(RwLock::new(
-                FrostEd25519SigningStorage::init(party2_keys_data),
-            )));
+            let party1_signing = FrostEd25519Signing::new(
+                FrostEd25519Storage::init("party1_signing".into())
+                    .await
+                    .unwrap(),
+            );
+            let party2_signing = FrostEd25519Signing::new(
+                FrostEd25519Storage::init("party2_signing".into())
+                    .await
+                    .unwrap(),
+            );
+
+            party1_signing
+                .storage()
+                .set_keypair_data(&party1_keys_data)
+                .await
+                .unwrap();
+            party2_signing
+                .storage()
+                .set_keypair_data(&party2_keys_data)
+                .await
+                .unwrap();
 
             let message = "Hello FROST!";
             let message_hash = *blake3::hash(message.as_bytes()).as_bytes();
-            let participants = &[
-                // party1_signing.identifier().await.unwrap(),
-                party2_signing.identifier().await.unwrap(),
-            ];
+            let participants = &[party2_signing.storage().get_identifier().await.unwrap()];
 
             {
                 // Coordinator is also signer
@@ -191,9 +199,9 @@ mod test {
                     .unwrap();
                 assert!(
                     party1_signing
+                        .storage()
                         .get_coordinator_message(&message_hash)
                         .await
-                        .unwrap()
                         .unwrap()
                         .state
                         == SigningState::Round1
@@ -220,26 +228,30 @@ mod test {
 
                 assert!(
                     party1_signing
-                        .all_coordinator_messages()
+                        .storage()
+                        .get_coordinator_messages()
                         .await
                         .unwrap()
                         .len()
                         == 1usize
                 );
                 assert!(party1_signing
-                    .all_participant_messages()
+                    .storage()
+                    .get_participant_messages()
                     .await
                     .unwrap()
                     .is_empty());
 
                 assert!(party2_signing
-                    .all_coordinator_messages()
+                    .storage()
+                    .get_coordinator_messages()
                     .await
                     .unwrap()
                     .is_empty());
                 assert!(
                     party2_signing
-                        .all_participant_messages()
+                        .storage()
+                        .get_participant_messages()
                         .await
                         .unwrap()
                         .len()

@@ -18,16 +18,13 @@ ed25519 = ["dep:frost-ed25519"]
 frost-p256 = { version = "=2.2.0", default-features = false, features = [
     "cheater-detection",
     "serialization",
-    "serde",
 ], optional = true }
 frost-ed25519 = { version = "=2.2.0", default-features = false, features = [
     "cheater-detection",
     "serialization",
-    "serde",
 ], optional = true }
 frost-core = { version = "2.2.0", default-features = false, features = [
     "cheater-detection",
-    "serde",
 ] }
 
 
@@ -37,10 +34,16 @@ zeroize.workspace = true
 rand_chacha.workspace = true
 async-dup.workspace = true
 async-lock.workspace = true
-
+bitcode = { workspace = true }
 rand = "=0.8"
-serde.workspace = true
-redb = "3.1.0"
+dirs.workspace = true
+camino = "1.2.2"
+blocking = "1.6.2"
+fjall.workspace = true
+futures-lite = { version = "2.6.1", default-features = false, features = [
+    "alloc",
+    "futures-io",
+] }
 
 [dev-dependencies]
 smol.workspace = true

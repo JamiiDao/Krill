@@ -1,9 +1,11 @@
-use crate::{Message32ByteHash, SigningState};
+use std::io::ErrorKind;
 
-pub type FrostDkgResult<T> = Result<T, FrostDkgError>;
+use crate::{Message32ByteHash, SigningState, StoreKeyspace};
+
+pub type KrillResult<T> = Result<T, KrillError>;
 
 #[derive(Debug, PartialEq, Eq, Clone, thiserror::Error)]
-pub enum FrostDkgError {
+pub enum KrillError {
     #[error("Global storage is not initialized yet it is being called")]
     GlobalStorageNotInitialized,
     #[error("The maximum number of signers must be equal to or greater than the minimum number of signers")]
@@ -65,8 +67,6 @@ pub enum FrostDkgError {
         bytes_as_hex(value)
     }).collect::<Vec<String>>())]
     InvalidParticipants(Vec<Vec<u8>>),
-    #[error("The message to signing already exists in the store therefore set operation skipped. Message hex: `{as_hex}`",as_hex = bytes_as_hex(.0))]
-    MessageToSignAlreadyExists(Message32ByteHash),
     #[error("The current state of signing message `{message_hash}` is `{state}` instead of SigningState::Round1", message_hash = bytes_as_hex(.message_hash))]
     ExpectedRound1SigningState {
         message_hash: Message32ByteHash,
@@ -95,6 +95,82 @@ pub enum FrostDkgError {
     UnableToRemoveValidSignedParticipantMessage,
     #[error("The group signature verification failed for the given message. Error: `{0}`!")]
     InvalidAggregateSignature(String),
+    #[error("Unable to deserialize bytes into FrostDkgData struct.")]
+    UnableToDeserializeIntoFrostDkgData,
+    #[error("Encountered I/O error: `{0}`")]
+    Io(ErrorKind),
+    #[error("The FrostDkgData bytes were not found in storage")]
+    FrostDkgDataNotFound,
+    #[error("The storage encountered an error: `{0}`!")]
+    Store(String),
+    #[error("The `{key}` for the FROST Signing Keypair was not found in the store", key = StoreKeyspace::FrostKeypair.to_str())]
+    FrostKeypairKeyspaceNotFound,
+    #[error("The FROST Keypair key was not found in storage")]
+    FrostKeypairDataNotFound,
+    #[error("Unable to deserialize the FROST keypair bytes from storage")]
+    UnableToDeserializeFrostKeypairData,
+    #[error("The Coordinator signing requests key was not found in storage")]
+    CoordinatorDataNotFound,
+    #[error("Unable to deserialize the coordinator signing requests bytes from storage")]
+    UnableToDeserializeCoordinatorMessages,
+    #[error("The Participants signing requests key was not found in storage")]
+    ParticipantMessagesDataNotFound,
+    #[error("Unable to deserialize the participants signing requests bytes from storage")]
+    UnableToDeserializeParticipantMessages,
+    #[error("The signed messages key was not found in storage")]
+    SignedMessagesDataNotFound,
+    #[error("Unable to deserialize the signed messages bytes from storage")]
+    UnableToDeserializeSignedMessages,
+    #[error("Unable to deserialize bytes into FROST Identifier")]
+    UnableToDeserializeFrostIdentifier,
+    #[error("Unable to serialize FROST Round1 SecretPackage")]
+    UnableToSerializeFrostDkgRound1SecretPackage,
+    #[error("Unable to deserialize FROST Round1 SecretPackage")]
+    UnableToDeserializeFrostDkgRound1SecretPackage,
+    #[error("Unable to serialize FROST Round1 PublicPackage")]
+    UnableToSerializeFrostDkgRound1PublicPackage,
+    #[error("Unable to deserialize FROST Round1 PublicPackage")]
+    UnableToDeserializeFrostDkgRound1PublicPackage,
+    #[error("Unable to serialize FROST Round2 SecretPackage")]
+    UnableToSerializeFrostDkgRound2SecretPackage,
+    #[error("Unable to deserialize FROST Round2 SecretPackage")]
+    UnableToDeserializeFrostDkgRound2SecretPackage,
+    #[error("Unable to serialize FROST Round2 Public Package")]
+    UnableToSerializeFrostDkgRound2PublicPackage,
+    #[error("Unable to deserialize FROST Round2 Public Package")]
+    UnableToDeserializeFrostDkgRound2PublicPackage,
+    #[error("Unable to serialize FROST Signing KeyPackage")]
+    UnableToSerializeFrostSigningKeyPackage,
+    #[error("Unable to deserialize FROST Signing KeyPackage")]
+    UnableToDeserializeFrostSigningKeyPackage,
+    #[error("Unable to serialize FROST Signing PublicKeyPackage")]
+    UnableToSerializeFrostSigningPublicKeyPackage,
+    #[error("Unable to deserialize FROST Signing PublicKeyPackage")]
+    UnableToDeserializeFrostSigningPublicKeyPackage,
+    #[error("Unable to serialize FROST SigningNonces")]
+    UnableToSerializeFrostSigningNonces,
+    #[error("Unable to deserialize FROST SigningNonces")]
+    UnableToDeserializeFrostSigningNonces,
+    #[error("Unable to serialize FROST SigningCommitments")]
+    UnableToSerializeFrostSigningCommitments,
+    #[error("Unable to deserialize FROST SigningCommitments")]
+    UnableToDeserializeFrostSigningCommitments,
+    #[error("Unable to serialize FROST SigningPackage")]
+    UnableToSerializeFrostSigningPackage,
+    #[error("Unable to deserialize FROST SigningPackage")]
+    UnableToDeserializeFrostSigningPackage,
+    #[error("Unable to serialize FROST SignatureShare")]
+    UnableToSerializeFrostSignature,
+    #[error("Unable to deserialize FROST SignatureShare")]
+    UnableToDeserializeFrostSignatureShare,
+    #[error("Unable to deserialize FROST Signature")]
+    UnableToDeserializeFrostSignature,
+    #[error("Unable to deserialize bytes into ParticipantMessageData")]
+    UnableToDeserializeParticipantMessageData,
+    #[error("Unable to deserialize bytes into CoordinatorDataNotFound")]
+    UnableToDeserializeCoordinatorDataNotFound,
+    #[error("Unable to deserialize bytes into SignedMessagesDataNotFound")]
+    UnableToDeserializeSignedMessagesDataNotFound,
 }
 
 fn bytes_as_hex(bytes: &[u8]) -> String {
@@ -104,4 +180,13 @@ fn bytes_as_hex(bytes: &[u8]) -> String {
         .collect::<String>()
         .trim()
         .to_string()
+}
+
+impl From<fjall::Error> for KrillError {
+    fn from(error: fjall::Error) -> Self {
+        match error {
+            fjall::Error::Io(io_error) => Self::Io(io_error.kind()),
+            _ => Self::Store(error.to_string()),
+        }
+    }
 }
