@@ -2,73 +2,61 @@ use std::{collections::BTreeMap, future::Future};
 
 use frost_core::Ciphersuite;
 
-use crate::{FrostDkgState, FrostDkgStorage, FrostSigningData};
+use crate::{FrostDkgState, FrostDkgStorage, FrostKeypairData, KrillResult};
 
 pub trait FrostDkg {
-    type DkgGenericError: core::error::Error;
     type DkgCipherSuite: Ciphersuite;
 
     fn storage(
         &self,
-    ) -> impl Future<
-        Output = Result<
-            impl FrostDkgStorage<Self::DkgCipherSuite, Self::DkgGenericError>,
-            Self::DkgGenericError,
-        >,
-    >;
+    ) -> impl Future<Output = KrillResult<impl FrostDkgStorage<Self::DkgCipherSuite>>>;
 
-    fn state(&self) -> impl Future<Output = Result<FrostDkgState, Self::DkgGenericError>>;
+    fn state(&self) -> impl Future<Output = KrillResult<FrostDkgState>>;
 
     fn generate_identifier(
         &self,
         identifier: impl AsRef<[u8]>,
-    ) -> Result<frost_core::Identifier<Self::DkgCipherSuite>, Self::DkgGenericError>;
+    ) -> KrillResult<frost_core::Identifier<Self::DkgCipherSuite>>;
 
     fn generate_identifier_random(
         &self,
-    ) -> Result<frost_core::Identifier<Self::DkgCipherSuite>, Self::DkgGenericError>;
+    ) -> KrillResult<frost_core::Identifier<Self::DkgCipherSuite>>;
 
-    fn frost_dkg_state_transition(
+    fn set_identifier(
         &self,
-    ) -> impl Future<Output = Result<FrostDkgState, Self::DkgGenericError>>;
+        identifier: &frost_core::Identifier<Self::DkgCipherSuite>,
+    ) -> impl Future<Output = KrillResult<()>>;
 
-    fn part1(
-        &self,
-    ) -> impl Future<Output = Result<FrostPart1Output<Self::DkgCipherSuite>, Self::DkgGenericError>>;
+    fn frost_dkg_state_transition(&self) -> impl Future<Output = KrillResult<FrostDkgState>>;
+
+    fn part1(&self) -> impl Future<Output = KrillResult<FrostPart1Output<Self::DkgCipherSuite>>>;
 
     fn receive_part1(
         &self,
         identifier: frost_core::Identifier<Self::DkgCipherSuite>,
         package: frost_core::keys::dkg::round1::Package<Self::DkgCipherSuite>,
-    ) -> impl Future<Output = Result<(), Self::DkgGenericError>>;
+    ) -> impl Future<Output = KrillResult<()>>;
 
     fn send_part1(
         &self,
-    ) -> impl Future<Output = Result<FrostPart1Output<Self::DkgCipherSuite>, Self::DkgGenericError>>;
+    ) -> impl Future<Output = KrillResult<FrostPart1Output<Self::DkgCipherSuite>>>;
 
-    fn part2(
-        &self,
-    ) -> impl Future<Output = Result<FrostPart2Output<Self::DkgCipherSuite>, Self::DkgGenericError>>;
+    fn part2(&self) -> impl Future<Output = KrillResult<FrostPart2Output<Self::DkgCipherSuite>>>;
 
     fn receive_part2(
         &self,
         identifier: frost_core::Identifier<Self::DkgCipherSuite>,
         package: frost_core::keys::dkg::round2::Package<Self::DkgCipherSuite>,
-    ) -> impl Future<Output = Result<(), Self::DkgGenericError>>;
+    ) -> impl Future<Output = KrillResult<()>>;
 
     fn send_part2(
         &self,
         identifier: &frost_core::Identifier<Self::DkgCipherSuite>,
     ) -> impl Future<
-        Output = Result<
-            Option<frost_core::keys::dkg::round2::Package<Self::DkgCipherSuite>>,
-            Self::DkgGenericError,
-        >,
+        Output = KrillResult<Option<frost_core::keys::dkg::round2::Package<Self::DkgCipherSuite>>>,
     >;
 
-    fn part3(
-        &self,
-    ) -> impl Future<Output = Result<FrostSigningData<Self::DkgCipherSuite>, Self::DkgGenericError>>;
+    fn part3(&self) -> impl Future<Output = KrillResult<FrostKeypairData>>;
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]

@@ -3,3 +3,4 @@
 **/Cargo.lock
 .env
 secrets.toml
+.vscode

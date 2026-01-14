@@ -1,10 +1,8 @@
 use core::fmt;
 
-use serde::{Deserialize, Serialize};
+use bitcode::{Decode, Encode};
 
-#[derive(
-    Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy, Default, Serialize, Deserialize,
-)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy, Default, Encode, Decode)]
 pub enum FrostDkgState {
     #[default]
     Initial,
