@@ -17,69 +17,62 @@ pub use csprng::*;
 mod test {
     use super::*;
 
-    use super::FrostDistributedSigning;
-
     #[test]
     fn test_dkg_and_signing() {
         smol::block_on(async {
             let party1 = "alice@example";
-
             let party2 = "bob@example";
 
-            let ed25519_dkg_party1 =
-                FrostEd25519Dkg::new(FrostEd25519Storage::init("party1".into()).await.unwrap());
+            let party1_db = FrostEd25519Storage::init_with_dir("party1").await.unwrap();
+            let party2_db = FrostEd25519Storage::init_with_dir("party2").await.unwrap();
+
+            let ed25519_dkg_party1 = FrostEd25519Dkg::new(party1_db.clone());
 
             {
                 //Init party 1
+                ed25519_dkg_party1.signal_dkg().await.unwrap();
+
                 let ed25519_identifier = ed25519_dkg_party1.generate_identifier(party1).unwrap();
                 ed25519_dkg_party1
+                    .storage()
                     .set_identifier(&ed25519_identifier)
                     .await
                     .unwrap();
 
                 ed25519_dkg_party1
                     .storage()
-                    .await
-                    .unwrap()
                     .set_maximum_signers(2)
                     .await
                     .unwrap();
 
                 ed25519_dkg_party1
                     .storage()
-                    .await
-                    .unwrap()
                     .set_minimum_signers(2)
                     .await
                     .unwrap();
             }
 
-            let ed25519_dkg_party2 =
-                FrostEd25519Dkg::new(FrostEd25519Storage::init("party2".into()).await.unwrap());
+            let ed25519_dkg_party2 = FrostEd25519Dkg::new(party2_db.clone());
 
             {
+                ed25519_dkg_party2.signal_dkg().await.unwrap();
+
                 //Init party 2
-                let ed25519_identifier = ed25519_dkg_party1.generate_identifier(party2).unwrap();
+                let ed25519_identifier = ed25519_dkg_party2.generate_identifier(party2).unwrap();
                 ed25519_dkg_party2
                     .storage()
-                    .await
-                    .unwrap()
                     .set_identifier(&ed25519_identifier)
                     .await
                     .unwrap();
 
                 ed25519_dkg_party2
                     .storage()
-                    .await
-                    .unwrap()
                     .set_maximum_signers(2)
                     .await
                     .unwrap();
 
                 ed25519_dkg_party2
                     .storage()
-                    .await
-                    .unwrap()
                     .set_minimum_signers(2)
                     .await
                     .unwrap();
@@ -87,18 +80,18 @@ mod test {
 
             let party1_identifier = ed25519_dkg_party1
                 .storage()
-                .await
-                .unwrap()
                 .get_identifier()
                 .await
+                .unwrap()
+                .decode()
                 .unwrap();
 
             let party2_identifier = ed25519_dkg_party2
                 .storage()
-                .await
-                .unwrap()
                 .get_identifier()
                 .await
+                .unwrap()
+                .decode()
                 .unwrap();
 
             {
@@ -109,15 +102,11 @@ mod test {
 
                 let party1_part1_package = ed25519_dkg_party1
                     .storage()
-                    .await
-                    .unwrap()
                     .get_part1_public_package()
                     .await
                     .unwrap();
                 let party2_part1_package = ed25519_dkg_party2
                     .storage()
-                    .await
-                    .unwrap()
                     .get_part1_public_package()
                     .await
                     .unwrap();
@@ -160,21 +149,12 @@ mod test {
                     .await
                     .unwrap();
             }
-
             // Part3
             let party1_keys_data = ed25519_dkg_party1.part3().await.unwrap();
             let party2_keys_data = ed25519_dkg_party2.part3().await.unwrap();
 
-            let party1_signing = FrostEd25519Signing::new(
-                FrostEd25519Storage::init("party1_signing".into())
-                    .await
-                    .unwrap(),
-            );
-            let party2_signing = FrostEd25519Signing::new(
-                FrostEd25519Storage::init("party2_signing".into())
-                    .await
-                    .unwrap(),
-            );
+            let party1_signing = FrostEd25519Signing::new(party1_db);
+            let party2_signing = FrostEd25519Signing::new(party2_db);
 
             party1_signing
                 .storage()
@@ -189,12 +169,16 @@ mod test {
 
             let message = "Hello FROST!";
             let message_hash = *blake3::hash(message.as_bytes()).as_bytes();
-            let participants = &[party2_signing.storage().get_identifier().await.unwrap()];
+            let participants = vec![party2_signing.storage().get_identifier().await.unwrap()]
+                .into_iter()
+                .map(|value| value.decode())
+                .collect::<KrillResult<Vec<frost_ed25519::Identifier>>>()
+                .unwrap();
 
             {
                 // Coordinator is also signer
                 let signal_round1 = party1_signing
-                    .signal_round1(message_hash, participants, true)
+                    .signal_round1(message_hash, &participants, true)
                     .await
                     .unwrap();
                 assert!(

@@ -44,6 +44,7 @@ futures-lite = { version = "2.6.1", default-features = false, features = [
     "alloc",
     "futures-io",
 ] }
+async-fs = "2.2.0"
 
 [dev-dependencies]
 smol.workspace = true

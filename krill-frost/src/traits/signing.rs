@@ -10,7 +10,7 @@ use frost_core::Ciphersuite;
 use crate::{
     FrostIdentifier, FrostSignature, FrostSignatureShare, FrostSigningCommitments,
     FrostSigningKeyPackage, FrostSigningNonces, FrostSigningPackage, FrostSigningPublicKeyPackage,
-    KrillResult,
+    FrostStorage, KrillResult,
 };
 
 pub type Message32ByteHash = [u8; 32];
@@ -18,7 +18,7 @@ pub type Message32ByteHash = [u8; 32];
 pub trait FrostDistributedSigning {
     type DkgCipherSuite: Ciphersuite;
 
-    fn storage(&self) -> impl FrostDistributedSigningOps<Self::DkgCipherSuite>;
+    fn storage(&self) -> impl FrostStorage<Self::DkgCipherSuite>;
 
     fn signal_round1(
         &self,
@@ -66,64 +66,6 @@ pub trait FrostDistributedSigning {
     fn verify_and_remove(
         &self,
         aggregate_signature_data: &AggregateSignatureData,
-    ) -> impl Future<Output = KrillResult<()>>;
-}
-
-pub trait FrostDistributedSigningOps<C: Ciphersuite> {
-    fn set_keypair_data(
-        &self,
-        frost_keypair_data: &FrostKeypairData,
-    ) -> impl Future<Output = KrillResult<()>>;
-
-    fn set_coordinator_message(
-        &self,
-        message: &CoordinatorMessageData,
-    ) -> impl Future<Output = KrillResult<()>>;
-
-    fn set_participant_message(
-        &self,
-        message: &ParticipantMessageData,
-    ) -> impl Future<Output = KrillResult<()>>;
-
-    fn set_signed_message(
-        &self,
-        signed_message_data: &SignedMessageData,
-    ) -> impl Future<Output = KrillResult<()>>;
-
-    fn get_keypair_data(&self) -> impl Future<Output = KrillResult<FrostKeypairData>>;
-
-    fn get_identifier(&self) -> impl Future<Output = KrillResult<frost_core::Identifier<C>>>;
-
-    fn get_coordinator_message(
-        &self,
-        message_hash: &Message32ByteHash,
-    ) -> impl Future<Output = KrillResult<CoordinatorMessageData>>;
-
-    fn get_participant_message(
-        &self,
-        message_hash: &Message32ByteHash,
-    ) -> impl Future<Output = KrillResult<ParticipantMessageData>>;
-
-    fn get_signed_message(
-        &self,
-        message_hash: &Message32ByteHash,
-    ) -> impl Future<Output = KrillResult<SignedMessageData>>;
-
-    fn get_coordinator_messages(&self) -> impl Future<Output = KrillResult<CoordinatorMessages>>;
-
-    fn get_participant_messages(&self) -> impl Future<Output = KrillResult<ParticipantMessages>>;
-
-    fn get_signed_messages(&self) -> impl Future<Output = KrillResult<SignedMessages>>;
-
-    fn is_valid_participant(
-        &self,
-        participant: &frost_core::Identifier<C>,
-        frost_keypair_data: &FrostKeypairData,
-    ) -> bool;
-
-    fn clear_participant_messages(
-        &self,
-        message_hash: &Message32ByteHash,
     ) -> impl Future<Output = KrillResult<()>>;
 }
 

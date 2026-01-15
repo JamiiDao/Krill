@@ -2,32 +2,32 @@ use std::{collections::BTreeMap, future::Future};
 
 use frost_core::Ciphersuite;
 
-use crate::{FrostDkgState, FrostDkgStorage, FrostKeypairData, KrillResult};
+use crate::{FrostDkgState, FrostKeypairData, FrostStorage, KrillResult};
 
 pub trait FrostDkg {
     type DkgCipherSuite: Ciphersuite;
 
-    fn storage(
-        &self,
-    ) -> impl Future<Output = KrillResult<impl FrostDkgStorage<Self::DkgCipherSuite>>>;
-
-    fn state(&self) -> impl Future<Output = KrillResult<FrostDkgState>>;
-
     fn generate_identifier(
         &self,
         identifier: impl AsRef<[u8]>,
-    ) -> KrillResult<frost_core::Identifier<Self::DkgCipherSuite>>;
+    ) -> KrillResult<frost_core::Identifier<Self::DkgCipherSuite>>
+        where   <<<Self::DkgCipherSuite as frost_core::Ciphersuite>::Group as frost_core::Group>::Field as frost_core::Field>::Scalar: std::convert::From<u128>
+   ;
 
-    fn generate_identifier_random(
+    fn generate_identifier_random
+    (
         &self,
-    ) -> KrillResult<frost_core::Identifier<Self::DkgCipherSuite>>;
+    ) -> KrillResult<frost_core::Identifier<Self::DkgCipherSuite>>
+        where   <<<Self::DkgCipherSuite as frost_core::Ciphersuite>::Group as frost_core::Group>::Field as frost_core::Field>::Scalar: std::convert::From<u128>
+   ;
 
-    fn set_identifier(
-        &self,
-        identifier: &frost_core::Identifier<Self::DkgCipherSuite>,
-    ) -> impl Future<Output = KrillResult<()>>;
+    fn storage(&self) -> impl FrostStorage<Self::DkgCipherSuite>;
+
+    fn state(&self) -> impl Future<Output = KrillResult<FrostDkgState>>;
 
     fn frost_dkg_state_transition(&self) -> impl Future<Output = KrillResult<FrostDkgState>>;
+
+    fn signal_dkg(&self) -> impl Future<Output = KrillResult<()>>;
 
     fn part1(&self) -> impl Future<Output = KrillResult<FrostPart1Output<Self::DkgCipherSuite>>>;
 

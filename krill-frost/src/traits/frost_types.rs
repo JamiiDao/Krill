@@ -4,17 +4,12 @@ use zeroize::Zeroize;
 
 use crate::{KrillError, KrillResult};
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Encode, Decode)]
-pub struct FrostIdentifier(pub [u8; 128]);
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Encode, Decode)]
+pub struct FrostIdentifier(pub Vec<u8>);
 
 impl FrostIdentifier {
     pub fn encode<C: Ciphersuite>(identifier: &frost_core::Identifier<C>) -> Self {
-        let mut bytes = [0u8; 128];
-        let serialized = identifier.serialize();
-
-        bytes[0..serialized.len()].copy_from_slice(&serialized);
-
-        Self(bytes)
+        Self(identifier.serialize())
     }
 
     pub fn decode<C: Ciphersuite>(&self) -> KrillResult<frost_core::Identifier<C>> {
