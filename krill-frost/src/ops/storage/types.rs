@@ -10,7 +10,6 @@ use crate::{
 
 #[derive(Debug, Encode, Decode, Default)]
 pub struct FrostDkgData {
-    pub identifier: Option<FrostIdentifier>,
     pub maximum_signers: u16,
     pub minimum_signers: u16,
     pub dkg_state: FrostDkgState,
@@ -25,7 +24,6 @@ pub struct FrostDkgData {
 impl FrostDkgData {
     pub fn init() -> Self {
         Self {
-            identifier: Option::default(),
             part1_secret: Option::default(),
             part1_package: Option::default(),
             received_part1_packages: BTreeMap::default(),

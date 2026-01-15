@@ -4,21 +4,16 @@ use frost_core::Ciphersuite;
 use zeroize::Zeroize;
 
 use crate::{
-    AggregateSignatureData, CoordinatorMessageData, FrostDistributedSigning,
-    FrostDistributedSigningOps, FrostIdentifier, FrostSignature, FrostSignatureShare,
-    FrostSigningCommitments, FrostSigningNonces, FrostSigningPackage, KrillError,
-    KrillResult, Message32ByteHash, ParticipantMessageData, Round1CommitData, Round2SigningData,
-    SigningPackageData, SigningRound1RequestData, SigningState,
+    AggregateSignatureData, CoordinatorMessageData, FrostDistributedSigning, FrostIdentifier,
+    FrostSignature, FrostSignatureShare, FrostSigningCommitments, FrostSigningNonces,
+    FrostSigningPackage, FrostStorage, KrillError, KrillResult, Message32ByteHash,
+    ParticipantMessageData, Round1CommitData, Round2SigningData, SigningPackageData,
+    SigningRound1RequestData, SigningState,
 };
 
-pub struct FrostGenericSigning<C: Ciphersuite + Send + Sync, S: FrostDistributedSigningOps<C>>(
-    S,
-    PhantomData<C>,
-);
+pub struct FrostGenericSigning<C: Ciphersuite + Send + Sync, S: FrostStorage<C>>(S, PhantomData<C>);
 
-impl<C: Ciphersuite + Send + Sync, S: FrostDistributedSigningOps<C> + Clone>
-    FrostGenericSigning<C, S>
-{
+impl<C: Ciphersuite + Send + Sync, S: FrostStorage<C> + Clone> FrostGenericSigning<C, S> {
     pub fn new(storage: S) -> Self {
         Self(storage, PhantomData)
     }
@@ -27,11 +22,11 @@ impl<C: Ciphersuite + Send + Sync, S: FrostDistributedSigningOps<C> + Clone>
 impl<C, S> FrostDistributedSigning for FrostGenericSigning<C, S>
 where
     C: Ciphersuite + Send + Sync,
-    S: FrostDistributedSigningOps<C> + Clone,
+    S: FrostStorage<C> + Clone,
 {
     type DkgCipherSuite = C;
 
-    fn storage(&self) -> impl FrostDistributedSigningOps<Self::DkgCipherSuite> {
+    fn storage(&self) -> impl FrostStorage<Self::DkgCipherSuite> {
         self.0.clone()
     }
 
@@ -83,10 +78,12 @@ where
                 .nonces
                 .replace(FrostSigningNonces::encode::<Self::DkgCipherSuite>(&nonces)?);
             message_data.commitments.insert(
-                keypair_data.identifier,
+                keypair_data.identifier.clone(),
                 FrostSigningCommitments::encode(&commitments)?,
             );
-            message_data.participants.push(keypair_data.identifier);
+            message_data
+                .participants
+                .push(keypair_data.identifier.clone());
         }
 
         self.storage()
@@ -207,10 +204,7 @@ where
 
         message_data
             .signing_package
-            .as_ref()
-            .map(|inner_signing_package| inner_signing_package.decode::<Self::DkgCipherSuite>())
-            .transpose()?
-            .replace(signing_package.clone());
+            .replace(FrostSigningPackage::encode(&signing_package)?);
 
         let nonces = message_data
             .nonces
@@ -357,9 +351,10 @@ where
         &self,
         message_hash: Message32ByteHash,
     ) -> KrillResult<AggregateSignatureData> {
-        let mut keypair_data = self.storage().get_keypair_data().await?;
+        let storage = self.storage();
+        let mut keypair_data = storage.get_keypair_data().await?;
 
-        let mut message_data_store = self.storage().get_coordinator_messages().await?;
+        let mut message_data_store = storage.get_coordinator_messages().await?;
 
         let message_data = message_data_store
             .get_mut(&message_hash)
@@ -399,11 +394,12 @@ where
         )
         .map_err(|error| KrillError::UnableToAggregateSignature(error.to_string()))?;
 
+        let identifier = storage.get_identifier().await?;
         let participants = core::mem::take(&mut message_data.participants);
         let outcome = AggregateSignatureData {
             message_hash,
             aggregate_signature: FrostSignature::encode(&aggregate_signature)?,
-            coordinator: keypair_data.identifier,
+            coordinator: identifier,
             participants,
         };
 

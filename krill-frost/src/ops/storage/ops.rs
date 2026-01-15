@@ -3,18 +3,218 @@ use std::collections::BTreeMap;
 use frost_core::Ciphersuite;
 
 use crate::{
-    FrostDkgData, FrostDkgState, FrostDkgStorage, FrostIdentifier,
-    FrostRound1PublicPackage, FrostRound1SecretPackage, FrostRound2PublicPackage,
-    FrostRound2SecretPackage, FrostStore, KrillError, KrillResult, StoreKeys,
+    CoordinatorMessageData, CoordinatorMessages, FrostDkgData, FrostDkgState, FrostIdentifier,
+    FrostKeypairData, FrostRound1PublicPackage, FrostRound1SecretPackage, FrostRound2PublicPackage,
+    FrostRound2SecretPackage, FrostStorage, FrostStore, KrillError, KrillResult, Message32ByteHash,
+    ParticipantMessageData, ParticipantMessages, SignedMessageData, SignedMessages, StoreKeys,
 };
 
-impl<C: Ciphersuite + Send + Sync + Clone> FrostDkgStorage<C> for FrostStore<C> {
+impl<C: Ciphersuite + Send + Sync + Clone> FrostStorage<C> for FrostStore<C> {
+    async fn set_identifier(&self, identifier: &frost_core::Identifier<C>) -> KrillResult<()> {
+        let identifier = FrostIdentifier::encode(identifier);
+        let mut frost_keypair_data = self.get_keypair_data().await?;
+        frost_keypair_data.identifier = identifier;
+
+        self.set_keypair_data(&frost_keypair_data).await
+    }
+
+    async fn get_identifier(&self) -> KrillResult<FrostIdentifier> {
+        Ok(self.get_keypair_data().await?.identifier)
+    }
+
+    async fn set_keypair_data(&self, frost_keypair_data: &FrostKeypairData) -> KrillResult<()> {
+        let frost_keypair_bytes = bitcode::encode(frost_keypair_data);
+        self.set_dkg_op(StoreKeys::KeypairData, frost_keypair_bytes)
+            .await
+    }
+
+    async fn set_coordinator_message(&self, message: &CoordinatorMessageData) -> KrillResult<()> {
+        let message_bytes = bitcode::encode(message);
+
+        let keyspace = self.coordinator_messages_keyspace();
+
+        self.set_op(keyspace, message.message_hash, message_bytes)
+            .await
+    }
+
+    async fn set_participant_message(&self, message: &ParticipantMessageData) -> KrillResult<()> {
+        let message_bytes = bitcode::encode(message);
+
+        let keyspace = self.participant_messages_keyspace();
+
+        self.set_op(keyspace, message.message_hash, message_bytes)
+            .await
+    }
+
+    async fn set_signed_message(&self, signed_message_data: &SignedMessageData) -> KrillResult<()> {
+        let message_bytes = bitcode::encode(signed_message_data);
+        let keyspace = self.signed_messages_keyspace();
+
+        self.set_op(keyspace, signed_message_data.message_hash, message_bytes)
+            .await
+    }
+
+    async fn get_keypair_data(&self) -> KrillResult<FrostKeypairData> {
+        let keyspace = self.keypair_keyspace();
+
+        let data_bytes = blocking::unblock(move || keyspace.get(StoreKeys::KeypairData.to_str()))
+            .await?
+            .map(|data| data.to_vec())
+            .ok_or(KrillError::FrostKeypairDataNotFound)?;
+
+        bitcode::decode(&data_bytes).or(Err(KrillError::UnableToDeserializeFrostKeypairData))
+    }
+
+    fn is_valid_participant(
+        &self,
+        participant: &frost_core::Identifier<C>,
+        frost_keypair_data: &FrostKeypairData,
+    ) -> bool {
+        frost_keypair_data
+            .participants
+            .iter()
+            .any(|stored_participant| stored_participant == &FrostIdentifier::encode(participant))
+    }
+
+    async fn get_coordinator_messages(&self) -> KrillResult<CoordinatorMessages> {
+        let keyspace = self.coordinator_messages_keyspace();
+
+        let values = keyspace
+            .as_ref()
+            .as_ref()
+            .iter()
+            .map(|key_value| key_value.value().map(|value| value.to_vec()))
+            .collect::<Result<Vec<Vec<u8>>, fjall::Error>>()?;
+
+        let mut outcome = CoordinatorMessages::default();
+
+        values.into_iter().try_for_each(|value| {
+            let message = bitcode::decode::<CoordinatorMessageData>(&value)
+                .or(Err(KrillError::UnableToDeserializeCoordinatorMessages))?;
+
+            outcome.insert(message.message_hash, message);
+
+            Ok::<(), KrillError>(())
+        })?;
+
+        Ok(outcome)
+    }
+
+    async fn get_coordinator_message(
+        &self,
+        message_hash: &Message32ByteHash,
+    ) -> KrillResult<CoordinatorMessageData> {
+        let keyspace = self.coordinator_messages_keyspace();
+
+        self.get_op(keyspace, *message_hash, KrillError::CoordinatorDataNotFound)
+            .await
+            .map(|value| {
+                bitcode::decode(&value)
+                    .or(Err(KrillError::UnableToDeserializeCoordinatorDataNotFound))
+            })?
+    }
+
+    async fn get_signed_message(
+        &self,
+        message_hash: &Message32ByteHash,
+    ) -> KrillResult<SignedMessageData> {
+        let keyspace = self.signed_messages_keyspace();
+
+        self.get_op(
+            keyspace,
+            *message_hash,
+            KrillError::SignedMessagesDataNotFound,
+        )
+        .await
+        .map(|value| {
+            bitcode::decode(&value).or(Err(
+                KrillError::UnableToDeserializeSignedMessagesDataNotFound,
+            ))
+        })?
+    }
+
+    async fn get_participant_message(
+        &self,
+        message_hash: &Message32ByteHash,
+    ) -> KrillResult<ParticipantMessageData> {
+        let keyspace = self.participant_messages_keyspace();
+
+        self.get_op(
+            keyspace,
+            *message_hash,
+            KrillError::ParticipantMessagesDataNotFound,
+        )
+        .await
+        .map(|value| {
+            bitcode::decode(&value).or(Err(KrillError::UnableToDeserializeParticipantMessageData))
+        })?
+    }
+
+    async fn get_participant_messages(&self) -> KrillResult<ParticipantMessages> {
+        let keyspace = self.participant_messages_keyspace();
+
+        let values = keyspace
+            .as_ref()
+            .as_ref()
+            .iter()
+            .map(|value| value.value().map(|value| value.to_vec()))
+            .collect::<Result<Vec<Vec<u8>>, fjall::Error>>()?;
+
+        let mut outcome = ParticipantMessages::default();
+
+        values.into_iter().try_for_each(|value| {
+            let message = bitcode::decode::<ParticipantMessageData>(&value)
+                .or(Err(KrillError::UnableToDeserializeParticipantMessages))?;
+
+            outcome.insert(message.message_hash, message);
+
+            Ok::<(), KrillError>(())
+        })?;
+
+        Ok(outcome)
+    }
+
+    async fn get_signed_messages(&self) -> KrillResult<SignedMessages> {
+        let keyspace = self.participant_messages_keyspace();
+
+        let values = keyspace
+            .as_ref()
+            .as_ref()
+            .iter()
+            .map(|value| value.value().map(|value| value.to_vec()))
+            .collect::<Result<Vec<Vec<u8>>, fjall::Error>>()?;
+
+        let mut outcome = SignedMessages::default();
+
+        values.into_iter().try_for_each(|value| {
+            let message = bitcode::decode::<SignedMessageData>(&value)
+                .or(Err(KrillError::UnableToDeserializeSignedMessages))?;
+
+            outcome.insert(message.message_hash, message);
+
+            Ok::<(), KrillError>(())
+        })?;
+
+        Ok(outcome)
+    }
+
+    async fn clear_participant_messages(
+        &self,
+        message_hash: &Message32ByteHash,
+    ) -> KrillResult<()> {
+        let keyspace = self.participant_messages_keyspace();
+
+        keyspace
+            .remove(message_hash)
+            .or(Err(KrillError::UnableToRemoveValidSignedParticipantMessage))
+    }
+
     fn serialize(&self, data: &FrostDkgData) -> Vec<u8> {
         bitcode::encode(data)
     }
 
     fn deserialize(&self, bytes: &[u8]) -> KrillResult<FrostDkgData> {
-        bitcode::decode(bytes).or(Err(KrillError::UnableToDeserializeIntoFrostDkgData))
+        bitcode::decode(bytes).or(Err(KrillError::UnableToDeserializeFrostDkgData))
     }
 
     async fn set_state(&self, dkg_state: FrostDkgState) -> KrillResult<()> {
@@ -28,25 +228,6 @@ impl<C: Ciphersuite + Send + Sync + Clone> FrostDkgStorage<C> for FrostStore<C> 
 
     async fn get_state(&self) -> KrillResult<FrostDkgState> {
         Ok(self.get_and_deserialize_dkg_data().await?.dkg_state)
-    }
-
-    async fn set_identifier(&self, identifier: &frost_core::Identifier<C>) -> KrillResult<()> {
-        let mut data = self.get_and_deserialize_dkg_data().await?;
-        data.identifier.replace(FrostIdentifier::encode(identifier));
-
-        let data_as_bytes = self.serialize(&data);
-
-        self.set_dkg_op(StoreKeys::Dkg, data_as_bytes).await
-    }
-
-    async fn get_identifier(&self) -> KrillResult<frost_core::Identifier<C>> {
-        self.get_and_deserialize_dkg_data()
-            .await?
-            .identifier
-            .as_ref()
-            .map(|value| value.decode::<C>())
-            .transpose()?
-            .ok_or(KrillError::DkgIdentifierNotFound)
     }
 
     async fn set_maximum_signers(&self, maximum_signers: u16) -> KrillResult<()> {
@@ -278,7 +459,7 @@ impl<C: Ciphersuite + Send + Sync + Clone> FrostDkgStorage<C> for FrostStore<C> 
     }
 
     async fn clear_dkg_data(&self) -> KrillResult<()> {
-        let keyspace = self.keypair_keyspace().await?;
+        let keyspace = self.keypair_keyspace();
 
         keyspace
             .remove(StoreKeys::Dkg.to_str())

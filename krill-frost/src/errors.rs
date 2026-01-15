@@ -6,6 +6,10 @@ pub type KrillResult<T> = Result<T, KrillError>;
 
 #[derive(Debug, PartialEq, Eq, Clone, thiserror::Error)]
 pub enum KrillError {
+    #[error("Unable to locate the home directory")]
+    UnableToFindHomeDirectory,
+    #[error("The home directory path is not valid UTF-8")]
+    HomeDirPathNotUtf8,
     #[error("Global storage is not initialized yet it is being called")]
     GlobalStorageNotInitialized,
     #[error("The maximum number of signers must be equal to or greater than the minimum number of signers")]
@@ -15,7 +19,7 @@ pub enum KrillError {
     #[error("Frost Identifier already exists in storage")]
     IdentifierAlreadyExists,
     #[error("The FROST DKG Identifier Secret was not found")]
-    DkgIdentifierNotFound,
+    FrostIdentifierNotFound,
     #[error("The FROST DKG Round1 Secret was not found")]
     Round1SecretNotFound,
     #[error("The FROST DKG Round1 Secret was not found")]
@@ -96,11 +100,9 @@ pub enum KrillError {
     #[error("The group signature verification failed for the given message. Error: `{0}`!")]
     InvalidAggregateSignature(String),
     #[error("Unable to deserialize bytes into FrostDkgData struct.")]
-    UnableToDeserializeIntoFrostDkgData,
+    UnableToDeserializeFrostDkgData,
     #[error("Encountered I/O error: `{0}`")]
     Io(ErrorKind),
-    #[error("The FrostDkgData bytes were not found in storage")]
-    FrostDkgDataNotFound,
     #[error("The storage encountered an error: `{0}`!")]
     Store(String),
     #[error("The `{key}` for the FROST Signing Keypair was not found in the store", key = StoreKeyspace::FrostKeypair.to_str())]
