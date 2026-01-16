@@ -1,0 +1,18 @@
+[package]
+name = "krill-common"
+version.workspace = true
+authors.workspace = true
+description.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+license.workspace = true
+edition.workspace = true
+
+[features]
+storage = ["dep:fjall"]
+home-dir = []
+
+[dependencies]
+thiserror.workspace = true
+fjall = { workspace = true, optional = true }

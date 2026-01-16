@@ -4,8 +4,9 @@ use async_fs::DirBuilder;
 use camino::Utf8PathBuf;
 use fjall::{KeyspaceCreateOptions, PersistMode, SingleWriterTxDatabase, SingleWriterTxKeyspace};
 use frost_core::Ciphersuite;
+use krill_common::{KrillError, KrillResult};
 
-use crate::{FrostDkgData, KrillError, KrillResult, StoreKeys, StoreKeyspace};
+use crate::{FrostDkgData, StoreKeys, StoreKeyspace};
 
 #[derive(Clone)]
 pub struct FrostStore<C: Ciphersuite + Send + Sync> {
@@ -168,7 +169,7 @@ where
         keyspace: Arc<fjall::SingleWriterTxKeyspace>,
         key: [u8; 32],
         bytes: Vec<u8>,
-    ) -> crate::KrillResult<()> {
+    ) -> KrillResult<()> {
         let db = self.store();
 
         blocking::unblock(move || {

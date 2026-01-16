@@ -1,0 +1,39 @@
+[package]
+name = "krill-server"
+version = "0.1.0"
+authors = ["448 OG <superuser@448.africa>"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+krill-common.workspace = true
+
+dioxus = { version = "0.7", features = ["fullstack", "router"] }
+axum = { version = "0.8", optional = true }
+tokio = { version = "1", features = ["full"], optional = true }
+serde = { version = "1.0.228", features = ["derive"] }
+reqwest = { version = "0.13.1", default-features = false, features = [
+    "rustls",
+    "http2",
+] }
+tracing = "0.1.44"
+wasm-toolkit.workspace = true
+async-dup = { workspace = true, optional = true }
+async-lock = { workspace = true, optional = true }
+async-channel = { workspace = true, optional = true }
+blake3.workspace = true
+gloo-timers.workspace = true
+wasm-bindgen-futures.workspace = true
+fastrand = { version = "2.3.0", features = ["getrandom", "js"] }
+
+[features]
+web = ["dioxus/web", "dep:async-channel"]
+default = []
+server = [
+    "axum",
+    "dioxus/server",
+    "dep:async-lock",
+    "dep:async-dup",
+    "dep:async-channel",
+]

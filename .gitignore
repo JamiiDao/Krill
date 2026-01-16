@@ -4,3 +4,5 @@
 .env
 secrets.toml
 .vscode
+krill-server/assets/tailwind.css
+krill-server/static/

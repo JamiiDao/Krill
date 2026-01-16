@@ -4,9 +4,6 @@ pub use ops::*;
 mod state;
 pub use state::*;
 
-mod errors;
-pub use errors::*;
-
 mod traits;
 pub use traits::*;
 
@@ -172,7 +169,7 @@ mod test {
             let participants = vec![party2_signing.storage().get_identifier().await.unwrap()]
                 .into_iter()
                 .map(|value| value.decode())
-                .collect::<KrillResult<Vec<frost_ed25519::Identifier>>>()
+                .collect::<krill_common::KrillResult<Vec<frost_ed25519::Identifier>>>()
                 .unwrap();
 
             {
