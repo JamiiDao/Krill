@@ -1,14 +1,14 @@
 use std::{collections::BTreeMap, marker::PhantomData};
 
 use frost_core::Ciphersuite;
+use krill_common::{KrillError, KrillResult};
 use zeroize::Zeroize;
 
 use crate::{
     AggregateSignatureData, CoordinatorMessageData, FrostDistributedSigning, FrostIdentifier,
     FrostSignature, FrostSignatureShare, FrostSigningCommitments, FrostSigningNonces,
-    FrostSigningPackage, FrostStorage, KrillError, KrillResult, Message32ByteHash,
-    ParticipantMessageData, Round1CommitData, Round2SigningData, SigningPackageData,
-    SigningRound1RequestData, SigningState,
+    FrostSigningPackage, FrostStorage, Message32ByteHash, ParticipantMessageData, Round1CommitData,
+    Round2SigningData, SigningPackageData, SigningRound1RequestData, SigningState,
 };
 
 pub struct FrostGenericSigning<C: Ciphersuite + Send + Sync, S: FrostStorage<C>>(S, PhantomData<C>);
@@ -143,7 +143,7 @@ where
         if message_data.state != SigningState::Round1 {
             return Err(KrillError::ExpectedRound1SigningState {
                 message_hash: commit_data.message_hash,
-                state: message_data.state,
+                state: message_data.state.as_str(),
             });
         }
 
@@ -316,7 +316,7 @@ where
         if message_data.state != SigningState::Round2 {
             return Err(KrillError::ExpectedRound2SigningState {
                 message_hash: message_data.message_hash,
-                state: message_data.state,
+                state: message_data.state.as_str(),
             });
         }
 
@@ -363,7 +363,7 @@ where
         if message_data.state != SigningState::Aggregate {
             return Err(KrillError::ExpectedAggregateSigningState {
                 message_hash: message_data.message_hash,
-                state: message_data.state,
+                state: message_data.state.as_str(),
             });
         }
 

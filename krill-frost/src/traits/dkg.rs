@@ -1,8 +1,9 @@
 use std::{collections::BTreeMap, future::Future};
 
 use frost_core::Ciphersuite;
+use krill_common::KrillResult;
 
-use crate::{FrostDkgState, FrostKeypairData, FrostStorage, KrillResult};
+use crate::{FrostDkgState, FrostKeypairData, FrostStorage};
 
 pub trait FrostDkg {
     type DkgCipherSuite: Ciphersuite;

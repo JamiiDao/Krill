@@ -1,8 +1,7 @@
 use bitcode::{Decode, Encode};
 use frost_core::Ciphersuite;
+use krill_common::{KrillError, KrillResult};
 use zeroize::Zeroize;
-
-use crate::{KrillError, KrillResult};
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Encode, Decode)]
 pub struct FrostIdentifier(pub Vec<u8>);

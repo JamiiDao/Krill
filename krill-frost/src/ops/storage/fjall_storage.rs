@@ -1,11 +1,11 @@
-use std::{io::ErrorKind, marker::PhantomData, path::Path, sync::Arc};
+use std::{marker::PhantomData, path::Path, sync::Arc};
 
-use async_fs::DirBuilder;
 use camino::Utf8PathBuf;
 use fjall::{KeyspaceCreateOptions, PersistMode, SingleWriterTxDatabase, SingleWriterTxKeyspace};
 use frost_core::Ciphersuite;
+use krill_common::{KrillError, KrillResult, KrillUtils};
 
-use crate::{FrostDkgData, KrillError, KrillResult, StoreKeys, StoreKeyspace};
+use crate::{FrostDkgData, StoreKeys, StoreKeyspace};
 
 #[derive(Clone)]
 pub struct FrostStore<C: Ciphersuite + Send + Sync> {
@@ -22,13 +22,13 @@ where
     C: Ciphersuite + Send + Sync,
 {
     pub async fn new() -> KrillResult<Self> {
-        let krill_dir = Self::krill_dir().await?;
+        let krill_dir = KrillUtils::krill_dir().await?;
 
         Self::init(krill_dir).await
     }
 
     pub async fn init_with_dir(dir_name: impl AsRef<str>) -> KrillResult<Self> {
-        let mut krill_dir = Self::krill_dir().await?;
+        let mut krill_dir = KrillUtils::krill_dir().await?;
         krill_dir.push(dir_name.as_ref());
 
         Self::init(krill_dir).await
@@ -38,34 +38,16 @@ where
         let path = path.as_ref().to_path_buf();
         let path = Utf8PathBuf::from_path_buf(path).or(Err(KrillError::HomeDirPathNotUtf8))?;
 
-        if let Some(error) = DirBuilder::new().recursive(true).create(&path).await.err() {
-            if error.kind() != ErrorKind::AlreadyExists {
-                return Err(KrillError::Io(error.kind()));
-            }
-        }
+        KrillUtils::create_recursive_dir(&path).await?;
 
         Self::init_db(path).await
-    }
-
-    pub async fn krill_dir() -> KrillResult<Utf8PathBuf> {
-        let mut db_dir = dirs::home_dir()
-            .map(|value| Utf8PathBuf::from_path_buf(value).or(Err(KrillError::HomeDirPathNotUtf8)))
-            .transpose()?
-            .ok_or(KrillError::UnableToFindHomeDirectory)?;
-        db_dir.push(".Krill");
-
-        Ok(db_dir)
     }
 
     async fn init(path: Utf8PathBuf) -> KrillResult<Self> {
         let mut path = path;
         path.push("KrillFrostStore");
 
-        if let Some(error) = DirBuilder::new().recursive(true).create(&path).await.err() {
-            if error.kind() != ErrorKind::AlreadyExists {
-                return Err(KrillError::Io(error.kind()));
-            }
-        }
+        KrillUtils::create_recursive_dir(&path).await?;
 
         Self::init_db(path).await
     }
@@ -168,7 +150,7 @@ where
         keyspace: Arc<fjall::SingleWriterTxKeyspace>,
         key: [u8; 32],
         bytes: Vec<u8>,
-    ) -> crate::KrillResult<()> {
+    ) -> KrillResult<()> {
         let db = self.store();
 
         blocking::unblock(move || {

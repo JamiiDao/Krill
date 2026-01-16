@@ -1,10 +1,11 @@
 use std::{collections::BTreeMap, future::Future};
 
 use frost_core::Ciphersuite;
+use krill_common::KrillResult;
 
 use crate::{
     CoordinatorMessageData, CoordinatorMessages, FrostDkgData, FrostDkgState, FrostIdentifier,
-    FrostKeypairData, KrillResult, Message32ByteHash, ParticipantMessageData, ParticipantMessages,
+    FrostKeypairData, Message32ByteHash, ParticipantMessageData, ParticipantMessages,
     SignedMessageData, SignedMessages,
 };
 

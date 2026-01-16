@@ -6,11 +6,12 @@ use std::{
 
 use bitcode::{Decode, Encode};
 use frost_core::Ciphersuite;
+use krill_common::KrillResult;
 
 use crate::{
     FrostIdentifier, FrostSignature, FrostSignatureShare, FrostSigningCommitments,
     FrostSigningKeyPackage, FrostSigningNonces, FrostSigningPackage, FrostSigningPublicKeyPackage,
-    FrostStorage, KrillResult,
+    FrostStorage,
 };
 
 pub type Message32ByteHash = [u8; 32];
@@ -117,9 +118,19 @@ pub enum SigningState {
     Aggregate,
 }
 
+impl SigningState {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Round1 => "Signing State Round 1",
+            Self::Round2 => "Signing State Round 2",
+            Self::Aggregate => "Signing State Aggregate Signature",
+        }
+    }
+}
+
 impl fmt::Display for SigningState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self)
+        write!(f, "{:?}", self.as_str())
     }
 }
 
