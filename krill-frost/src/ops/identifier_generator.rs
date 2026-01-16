@@ -1,10 +1,7 @@
 use std::marker::PhantomData;
 
 use frost_core::Ciphersuite;
-
-use crate::{
-    KrillError, RandomBytes,
-};
+use krill_common::{KrillError, RandomBytes};
 
 pub struct IdentifierGenerator<C: Ciphersuite>(PhantomData<C>);
 

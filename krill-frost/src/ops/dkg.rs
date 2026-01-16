@@ -1,12 +1,12 @@
 use std::marker::PhantomData;
 
 use frost_core::Ciphersuite;
+use krill_common::{KrillError, KrillResult};
 use zeroize::Zeroize;
 
 use crate::{
     FrostDkg, FrostDkgState, FrostIdentifier, FrostKeypairData, FrostPart1Output, FrostPart2Output,
     FrostSigningKeyPackage, FrostSigningPublicKeyPackage, FrostStorage, IdentifierGenerator,
-    KrillError, KrillResult,
 };
 
 pub struct FrostGenericDkg<C: Ciphersuite, S: FrostStorage<C>>(S, PhantomData<C>);

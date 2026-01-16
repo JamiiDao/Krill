@@ -1,0 +1,28 @@
+[package]
+name = "krill-common"
+version.workspace = true
+authors.workspace = true
+description.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+license.workspace = true
+edition.workspace = true
+
+[features]
+storage = ["dep:fjall"]
+home-dir = []
+random = ["dep:rand_chacha"]
+
+[dependencies]
+thiserror.workspace = true
+fjall = { workspace = true, optional = true }
+camino.workspace = true
+dirs.workspace = true
+blocking.workspace = true
+async-fs.workspace = true
+bitcode.workspace = true
+rand_chacha = { workspace = true, optional = true }
+blake3.workspace = true
+zeroize.workspace = true
+tai64.workspace = true

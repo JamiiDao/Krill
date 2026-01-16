@@ -1,0 +1,22 @@
+[package]
+name = "krill-store"
+version.workspace = true
+authors.workspace = true
+description.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+license.workspace = true
+edition.workspace = true
+
+[dependencies]
+fjall.workspace = true
+dirs.workspace = true
+camino.workspace = true
+krill-frost.workspace = true
+krill-common.workspace = true
+async-dup.workspace = true
+blocking.workspace = true
+bitcode.workspace = true
+blake3.workspace = true
+tai64.workspace = true
