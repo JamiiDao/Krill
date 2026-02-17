@@ -10,7 +10,7 @@ categories.workspace = true
 edition.workspace = true
 
 [features]
-default = ["p256", "ed25519"]
+default = ["ed25519"]
 p256 = ["dep:frost-p256"]
 ed25519 = ["dep:frost-ed25519"]
 
@@ -26,25 +26,22 @@ frost-ed25519 = { version = "=2.2.0", default-features = false, features = [
 frost-core = { version = "2.2.0", default-features = false, features = [
     "cheater-detection",
 ] }
-
+krill-common = { workspace = true, features = [
+    "storage",
+    "home-dir",
+    "random",
+] }
 
 blake3.workspace = true
 thiserror.workspace = true
 zeroize.workspace = true
-rand_chacha.workspace = true
 async-dup.workspace = true
 async-lock.workspace = true
 bitcode = { workspace = true }
-rand = "=0.8"
-dirs.workspace = true
-camino = "1.2.2"
-blocking = "1.6.2"
+rand.workspace = true
+camino.workspace = true
+blocking.workspace = true
 fjall.workspace = true
-futures-lite = { version = "2.6.1", default-features = false, features = [
-    "alloc",
-    "futures-io",
-] }
-async-fs = "2.2.0"
 
 [dev-dependencies]
 smol.workspace = true
