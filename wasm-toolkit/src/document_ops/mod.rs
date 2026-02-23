@@ -1,7 +1,6 @@
 use web_sys::Document;
 
 mod css_variables;
-pub use css_variables::*;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct WasmDocument(Document);

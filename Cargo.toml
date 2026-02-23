@@ -60,6 +60,7 @@ web-sys = { version = "0.3.85", features = [
     "Navigator",
     "MediaQueryList",
     "CssStyleDeclaration",
+    "Event",
 ] }
 gloo-timers = { version = "0.3.0", default-features = false }
 

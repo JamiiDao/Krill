@@ -1,9 +1,9 @@
 [package]
 name = "wasm-toolkit"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["448-OG <superuser@448.africa>"]
 description = "Utilities for common WebAssembly operations like error handling, fetching browser windows, etc while utilizing the same error handling methods."
-keywords = ["WabAssembly", "wasm"]
+keywords = ["WebAssembly", "wasm"]
 license = "Apache-2.0"
 edition = "2024"
 
