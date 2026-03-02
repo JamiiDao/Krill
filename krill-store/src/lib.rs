@@ -1,11 +1,13 @@
-mod storage;
-pub use storage::*;
+#[cfg(feature = "server_storage")]
+mod server;
+#[cfg(feature = "server_storage")]
+pub use server::*;
 
-mod branding;
-pub use branding::*;
+#[cfg(feature = "client_storage")]
+mod client;
+#[cfg(feature = "client_storage")]
+pub use client::*;
 
-mod app_state;
-pub use app_state::*;
-
-mod secrets;
-pub use secrets::*;
+#[cfg(all(feature = "server_storage", feature = "client_storage"))]
+#[cfg(not(debug_assertions))]
+compile_error!("Features 'client_storage' and 'server_storage' cannot be enabled together in a production build");

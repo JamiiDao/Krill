@@ -9,12 +9,17 @@ categories.workspace = true
 license.workspace = true
 edition.workspace = true
 
+[features]
+server_storage = ["dep:fjall", "krill-common/storage"]
+client_storage = ["dep:redb", "krill-common/client_storage"]
+
 [dependencies]
-fjall.workspace = true
-dirs.workspace = true
+fjall = { workspace = true, optional = true }
+redb = { workspace = true, optional = true }
+dirs = { workspace = true, optional = true }
 camino.workspace = true
 krill-frost.workspace = true
-krill-common.workspace = true
+krill-common = { workspace = true, optional = true }
 async-dup.workspace = true
 blocking.workspace = true
 bitcode.workspace = true

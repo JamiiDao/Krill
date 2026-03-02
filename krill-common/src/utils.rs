@@ -12,6 +12,16 @@ impl KrillUtils {
             .to_string()
     }
 
+    pub async fn test_dir_path(target_dir: &str) -> Utf8PathBuf {
+        let mut path = Utf8PathBuf::new();
+
+        path.push("target");
+
+        path.push(target_dir);
+
+        path
+    }
+
     #[cfg(feature = "home-dir")]
     pub async fn create_recursive_dir(path: &Utf8PathBuf) -> crate::KrillResult<()> {
         use async_fs::DirBuilder;
