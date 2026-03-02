@@ -277,6 +277,11 @@ pub enum KrillError {
     #[cfg(feature = "storage")]
     #[error("Unable to decode the color scheme")]
     UnableToGetColorScheme,
+    #[error("Invalid store key. Expected a length of at least 33 bytes")]
+    InvalidStoreKeyLength,
+    #[cfg(feature = "client_storage")]
+    #[error("{0}")]
+    ClientStorage(String),
 }
 
 #[cfg(feature = "storage")]
@@ -284,6 +289,16 @@ impl From<fjall::Error> for KrillError {
     fn from(error: fjall::Error) -> Self {
         match error {
             fjall::Error::Io(io_error) => Self::Io(io_error.kind()),
+            _ => Self::Store(error.to_string()),
+        }
+    }
+}
+
+#[cfg(feature = "client_storage")]
+impl From<redb::Error> for KrillError {
+    fn from(error: redb::Error) -> Self {
+        match error {
+            redb::Error::Io(io_error) => Self::Io(io_error.kind()),
             _ => Self::Store(error.to_string()),
         }
     }

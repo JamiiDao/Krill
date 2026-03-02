@@ -11,12 +11,14 @@ edition.workspace = true
 
 [features]
 storage = ["dep:fjall"]
+client_storage = ["dep:redb"]
 home-dir = []
 random = ["dep:rand_chacha"]
 
 [dependencies]
 thiserror.workspace = true
 fjall = { workspace = true, optional = true }
+redb = { workspace = true, optional = true }
 camino.workspace = true
 dirs.workspace = true
 blocking.workspace = true
