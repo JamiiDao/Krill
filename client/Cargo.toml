@@ -1,0 +1,26 @@
+[package]
+name = "client"
+version.workspace = true
+authors.workspace = true
+description.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+license.workspace = true
+edition.workspace = true
+
+[dependencies]
+krill-store = { workspace = true, features = ["client_storage"] }
+reqwest.workspace = true
+krill-common.workspace = true
+
+
+[dev-dependencies]
+async-channel.workspace = true
+async-dup.workspace = true
+async-io = "2.6.0"
+async-lock.workspace = true
+futures-lite.workspace = true
+bitcode.workspace = true
+tokio.workspace = true
+jzon.workspace = true

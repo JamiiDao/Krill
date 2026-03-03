@@ -3,19 +3,22 @@ use crate::{KrillError, KrillResult};
 pub struct StorageKeys;
 
 impl StorageKeys {
-    pub fn gen_store_key(identifier: &[u8], op_identifier: &[u8]) -> Vec<u8> {
+    pub fn gen_store_key(identifier: &[u8]) -> blake3::Hash {
+        blake3::hash(identifier)
+    }
+    pub fn gen_store_key_owned(identifier: &[u8]) -> Vec<u8> {
+        blake3::hash(identifier).as_bytes().to_vec()
+    }
+
+    pub fn gen_store_key_with_suffix(identifier: &[u8]) -> Vec<u8> {
         let prefix = blake3::hash(identifier).as_bytes().to_vec();
 
         let mut store_key = Vec::<u8>::new();
 
         store_key.extend_from_slice(&prefix);
-        store_key.extend_from_slice(op_identifier);
+        store_key.extend_from_slice(identifier);
 
         store_key
-    }
-
-    pub fn gen_store_key_prefix(identifier: &[u8]) -> blake3::Hash {
-        blake3::hash(identifier)
     }
 
     pub fn get_store_key_prefix(value: &[u8]) -> KrillResult<blake3::Hash> {

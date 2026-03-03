@@ -11,6 +11,8 @@ pub struct KrillStorage {
     secrets: Arc<SingleWriterTxKeyspace>,
     branding: Arc<SingleWriterTxKeyspace>,
     app_state: Arc<SingleWriterTxKeyspace>,
+    organizations: Arc<SingleWriterTxKeyspace>,
+    organization_setup_key: Arc<SingleWriterTxKeyspace>,
 }
 
 impl KrillStorage {
@@ -40,11 +42,22 @@ impl KrillStorage {
                 KeyspaceCreateOptions::default()
             })?;
 
+            let organizations = db.keyspace(Self::KEYSPACE_ORGANIZATIONS, || {
+                KeyspaceCreateOptions::default()
+            })?;
+
+            let organization_setup_key = db
+                .keyspace(Self::KEYSPACE_ORGANIZATION_SETUP_KEY, || {
+                    KeyspaceCreateOptions::default()
+                })?;
+
             Ok(Self {
                 store: Arc::new(db),
                 secrets: Arc::new(secrets),
                 branding: Arc::new(branding),
                 app_state: Arc::new(app_state),
+                organizations: Arc::new(organizations),
+                organization_setup_key: Arc::new(organization_setup_key),
             })
         })
         .await
@@ -52,6 +65,39 @@ impl KrillStorage {
 
     pub fn db(&self) -> Arc<fjall::SingleWriterTxDatabase> {
         self.store.clone()
+    }
+
+    pub async fn set_bytes_op(
+        &self,
+        keyspace: Arc<fjall::SingleWriterTxKeyspace>,
+        key: Vec<u8>,
+        value: impl Encode + Decode<'_>,
+    ) -> KrillResult<()> {
+        let db = self.db();
+
+        let value = bitcode::encode(&value);
+
+        blocking::unblock(move || {
+            if keyspace.contains_key(&key)? {
+                return Err(KrillError::KeyAlreadyExistsInStore);
+            } else {
+                keyspace.insert(key, value)?;
+            }
+            db.persist(PersistMode::SyncAll)?;
+
+            Ok(())
+        })
+        .await
+    }
+
+    pub async fn get_bytes_op(
+        &self,
+        keyspace: Arc<fjall::SingleWriterTxKeyspace>,
+        key: Vec<u8>,
+    ) -> KrillResult<Option<Vec<u8>>> {
+        Ok(blocking::unblock(move || keyspace.get(&key))
+            .await?
+            .map(|data| data.to_vec()))
     }
 
     pub async fn set_op(
@@ -66,8 +112,11 @@ impl KrillStorage {
         let value = bitcode::encode(&value);
 
         blocking::unblock(move || {
-            // Perform multiple operations atomically
-            keyspace.insert(key, value)?;
+            if keyspace.contains_key(&key)? {
+                return Err(KrillError::KeyAlreadyExistsInStore);
+            } else {
+                keyspace.insert(key, value)?;
+            }
 
             db.persist(PersistMode::SyncAll)?;
 
@@ -98,6 +147,14 @@ impl KrillStorage {
 
     pub fn app_state_keyspace(&self) -> Arc<SingleWriterTxKeyspace> {
         self.app_state.clone()
+    }
+
+    pub fn organizations_keyspace(&self) -> Arc<SingleWriterTxKeyspace> {
+        self.organizations.clone()
+    }
+
+    pub fn organization_setup_key_keyspace(&self) -> Arc<SingleWriterTxKeyspace> {
+        self.organization_setup_key.clone()
     }
 }
 

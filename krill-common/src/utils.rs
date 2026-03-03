@@ -1,5 +1,7 @@
 use camino::Utf8PathBuf;
 
+use crate::KrillResult;
+
 pub struct KrillUtils;
 
 impl KrillUtils {

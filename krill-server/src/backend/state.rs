@@ -24,6 +24,11 @@ pub(crate) async fn check_app_state(request: Request, next: Next) -> impl IntoRe
         return next.run(request).await;
     }
 
+    // Load paths like login without auth
+    if path.starts_with("/create-organization") || path.starts_with("/get-organization") {
+        return next.run(request).await;
+    }
+
     // Load assets without auth
     if path.starts_with("/assets")
         || path.starts_with("/pkg")

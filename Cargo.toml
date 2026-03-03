@@ -55,7 +55,8 @@ gloo-timers = { version = "0.3.0", default-features = false }
 reqwest = "0.13.2"
 tokio = { version = "1.49.0", features = ["full"] }
 futures-lite = "2.6.1"
-
+jzon = "0.12"
+serde = { version = "1", features = ["derive"] }
 
 [workspace.dependencies.web-sys]
 version = "0.3"

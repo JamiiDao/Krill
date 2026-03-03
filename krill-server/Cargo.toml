@@ -31,12 +31,13 @@ axum-extra = { version = "0.12.5", features = ["cookie"], optional = true }
 blake3 = { workspace = true, optional = true }
 base64ct = { version = "1.8.3", features = ["std"] }
 bitcode = { workspace = true }
+serde = { workspace = true }
 
 [features]
 web = ["dioxus/web", "dep:async-channel"]
 default = []
 server = [
-    "dep:krill-store",
+    "krill-store/server_storage",
     "axum",
     "dioxus/server",
     "dep:async-lock",

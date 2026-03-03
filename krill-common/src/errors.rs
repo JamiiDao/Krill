@@ -282,6 +282,12 @@ pub enum KrillError {
     #[cfg(feature = "client_storage")]
     #[error("{0}")]
     ClientStorage(String),
+    #[error("The key already exists in the store")]
+    KeyAlreadyExistsInStore,
+    #[error(
+        "Unable to deserialize the `ServerOutcome` to determine if the request succeeded or not"
+    )]
+    UnableToDeserializeServerOutcome,
 }
 
 #[cfg(feature = "storage")]
