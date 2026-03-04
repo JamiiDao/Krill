@@ -309,3 +309,48 @@ impl From<redb::Error> for KrillError {
         }
     }
 }
+
+#[cfg(feature = "client_storage")]
+impl From<redb::DatabaseError> for KrillError {
+    fn from(error: redb::DatabaseError) -> Self {
+        let error: redb::Error = error.into();
+
+        error.into()
+    }
+}
+
+#[cfg(feature = "client_storage")]
+impl From<redb::TransactionError> for KrillError {
+    fn from(error: redb::TransactionError) -> Self {
+        let error: redb::Error = error.into();
+
+        error.into()
+    }
+}
+
+#[cfg(feature = "client_storage")]
+impl From<redb::TableError> for KrillError {
+    fn from(error: redb::TableError) -> Self {
+        let error: redb::Error = error.into();
+
+        error.into()
+    }
+}
+
+#[cfg(feature = "client_storage")]
+impl From<redb::CommitError> for KrillError {
+    fn from(error: redb::CommitError) -> Self {
+        let error: redb::Error = error.into();
+
+        error.into()
+    }
+}
+
+#[cfg(feature = "client_storage")]
+impl From<redb::StorageError> for KrillError {
+    fn from(error: redb::StorageError) -> Self {
+        let error: redb::Error = error.into();
+
+        error.into()
+    }
+}
