@@ -6,7 +6,6 @@ use crate::TailwindColors;
 #[component]
 pub fn Configuration() -> Element {
     let blur = TailwindColors::glassmorphism();
-    let svg_bg = crate::SVG_BG_URL;
     let crystals_bg = crate::CRYSTALS_IMAGE_URL;
 
     rsx! {
