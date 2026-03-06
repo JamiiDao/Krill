@@ -6,7 +6,7 @@ use axum::{
     extract::Request,
     http::HeaderMap,
     middleware::Next,
-    response::{IntoResponse, Redirect, Response},
+    response::{IntoResponse, Redirect},
 };
 use axum_extra::extract::CookieJar;
 use krill_common::{KrillError, KrillResult};

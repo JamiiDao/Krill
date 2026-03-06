@@ -84,7 +84,24 @@ pub fn app() -> Element {
         document::Meta {name: "viewport", content: "width=device-width, initial-scale=1.0"}
         document::Link { rel: "icon", href: FAVICON }
         document::Link { rel: "stylesheet", href: TAILWIND_CSS }
+        document::Link { rel: "stylesheet", href: crate::FONT_STYLES }
         document::Style { r#"
+                @font-face {{
+                    font-family: 'paragraphfont';
+                    src: url('{crate::COMMIT_MONO_FONT}') format('woff2');
+                    font-weight: normal;
+                    font-style: normal;
+
+                }}
+
+
+                @font-face {{
+                    font-family: 'headingfont';
+                    src: url('{crate::HHENUM_FONT}') format('woff2');
+                    font-weight: normal;
+                    font-style: normal;
+
+                }}
                 body {{
                     background-color: #000;
                 }}

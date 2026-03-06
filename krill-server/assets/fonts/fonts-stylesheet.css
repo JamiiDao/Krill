@@ -1,0 +1,16 @@
+@font-face {
+    font-family: 'commitmonoregular';
+    src: url('/commitmono_regular-webfont.woff2') format('woff2');
+    font-weight: normal;
+    font-style: normal;
+
+}
+
+
+@font-face {
+    font-family: 'hhenumregular';
+    src: url('/hhenum-regular-webfont.woff2') format('woff2');
+    font-weight: normal;
+    font-style: normal;
+
+}
