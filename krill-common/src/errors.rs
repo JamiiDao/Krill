@@ -277,6 +277,10 @@ pub enum KrillError {
     #[cfg(feature = "storage")]
     #[error("Unable to decode the color scheme")]
     UnableToGetColorScheme,
+    #[error("Mail service configuration error. Check your SMTP configuration. Error: `{0}`!")]
+    Mailer(String),
+    #[error("Unable to delivery email. Error: `{0}`!")]
+    MailDelivery(String),
 }
 
 #[cfg(feature = "storage")]
