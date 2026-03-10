@@ -12,7 +12,7 @@ use axum_extra::extract::CookieJar;
 use krill_common::{KrillError, KrillResult};
 use krill_store::{KrillStorage, ServerCookie};
 
-use crate::RouteUtils;
+use crate::{app, RouteUtils};
 
 pub(crate) static SERVER_APP_STATE: OnceLock<Arc<RwLock<bool>>> = OnceLock::new();
 

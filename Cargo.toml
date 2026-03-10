@@ -1,7 +1,8 @@
 [workspace]
 members = [
     "krill-common",
-    "krill-frost", "krill-mail",
+    "krill-frost",
+    "krill-mail",
     "krill-server",
     "krill-store",
     "wasm-toolkit",
