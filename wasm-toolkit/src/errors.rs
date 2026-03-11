@@ -38,4 +38,12 @@ pub enum WasmToolkitError {
     UnableToCastElementToHtmlElement,
     #[error("Unable to set a CSS property")]
     UnableToSetCssProperty,
+    #[error(
+        "Attempted to cast a `web_sys::Element` to a `web_sys::HtmlElement` yet that element is not HTML Element class"
+    )]
+    ElementIsNotHtmlElement,
+    #[error("Unable to focus HTML Element. Error: {0}")]
+    UnableToFocusHtmlElement(String),
+    #[error("Unable to remove keyboard focus from current focused element")]
+    UnableToRemoveKeyboardFocus,
 }

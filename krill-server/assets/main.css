@@ -1,0 +1,33 @@
+.krill-grid-passcode {
+    display: grid;
+
+    /* On mobile: 4 columns, auto rows (creates new rows as needed) */
+    grid-template-columns: repeat(4, 1fr);
+    grid-auto-rows: 1fr;
+    /* Each row takes equal height */
+
+    gap: 1em;
+
+    justify-items: center;
+    align-items: center;
+
+    justify-content: center;
+    align-content: center;
+}
+
+/* Grid items */
+.krill-grid-item-input {
+    width: 100%;
+    max-width: 50px;
+    /* Ensure square shape */
+    aspect-ratio: 1;
+}
+
+/* Large screens */
+@media (min-width: 768px) {
+    .krill-grid-passcode {
+        grid-template-columns: repeat(8, 1fr);
+        /* 8 columns on large screens */
+        /* Remove grid-template-rows - let auto-rows handle it */
+    }
+}
