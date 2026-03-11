@@ -84,21 +84,26 @@ pub(crate) fn init_server_statics() -> KrillResult<()> {
                 "systemctl reload krill-server".red().bold().on_black(),
                 "` to restart the server.".magenta().on_black(),
             ]);
-            cmd_print.print_multiple_blanks(4);
-            cmd_print.calc_and_print(
-                "Press Enter to start Krill Server..."
-                    .cyan()
-                    .bold()
-                    .underline()
-                    .on_black(),
-            );
+
+            if !cfg!(debug_assertions) {
+                cmd_print.print_multiple_blanks(4);
+                cmd_print.calc_and_print(
+                    "Press Enter to start Krill Server..."
+                        .cyan()
+                        .bold()
+                        .underline()
+                        .on_black(),
+                );
+            }
             cmd_print.print_multiple_blanks(2);
             cmd_print.print_header("END OF CONFIGURATION INFORMATION");
 
-            let mut input = String::new();
-            std::io::stdin()
-                .read_line(&mut input)
-                .expect("Unable to read commandline input");
+            if !cfg!(debug_assertions) {
+                let mut input = String::new();
+                std::io::stdin()
+                    .read_line(&mut input)
+                    .expect("Unable to read commandline input");
+            }
 
             println!("\n\n\n");
         }
