@@ -82,31 +82,10 @@ pub fn app() -> Element {
         document::Meta {name: "viewport", content: "width=device-width, initial-scale=1.0"}
         document::Link { rel: "icon", href: FAVICON }
         document::Link { rel: "stylesheet", href: TAILWIND_CSS }
+        document::Link { rel: "stylesheet", href: crate::MAIN_CSS }
         document::Link { rel: "stylesheet", href: crate::FONT_STYLES }
-        document::Style { r#"
-                @font-face {{
-                    font-family: 'paragraphfont';
-                    src: url('{crate::COMMIT_MONO_FONT}') format('woff2');
-                    font-weight: normal;
-                    font-style: normal;
-
-                }}
-
-
-                @font-face {{
-                    font-family: 'headingfont';
-                    src: url('{crate::HHENUM_FONT}') format('woff2');
-                    font-weight: normal;
-                    font-style: normal;
-
-                }}
-                body {{
-                    background-color: #000;
-                }}
-            "#
-
-        }
-        div {class:"bg-[var(--background-color)] flex flex-col min-h-screen items-end justify-start",
+        {crate::extra_css_styles()}
+        div {class:"bg-[var(--background-color)] flex flex-col min-h-screen items-end justify-start dark:text-white light:text-black",
             {
                 match color_scheme {
                     Err(_) => {
@@ -116,7 +95,7 @@ pub fn app() -> Element {
                         match bitcode::decode::<ColorScheme>(&color_scheme_ok.value().unwrap().unwrap()){
                             Ok(decoded_color_scheme) => {
                                     CLIENT_COLOR_SCHEME.set(decoded_color_scheme).err();
-                                rsx! {"The resource is ready!"}
+                                rsx! {}
                             },
                             Err(_) => {
                                 rsx!{"UNABLE TO DECODE BRAND COLORS"}

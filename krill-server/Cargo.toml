@@ -32,6 +32,7 @@ blake3 = { workspace = true, optional = true }
 base64ct = { version = "1.8.3", features = ["std"] }
 bitcode = { workspace = true }
 yansi = "1.0.1"
+web-sys = { workspace = true, features = ["Window", "Document", "Element"] }
 
 [features]
 web = ["dioxus/web", "dep:async-channel"]

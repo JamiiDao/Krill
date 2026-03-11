@@ -1,6 +1,8 @@
 use web_sys::Document;
 
 mod css_variables;
+mod elements;
+mod focus;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct WasmDocument(Document);

@@ -16,6 +16,5 @@ pub use assets::*;
 mod svg_icons;
 pub use svg_icons::*;
 
-/// Every single color or layout inherits from this module
-mod design_elements;
-pub use design_elements::*;
+mod components;
+pub use components::*;
