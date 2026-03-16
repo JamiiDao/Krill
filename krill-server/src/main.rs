@@ -1,3 +1,5 @@
+#![allow(clippy::redundant_closure)]
+
 mod frontend;
 pub(crate) use frontend::*;
 

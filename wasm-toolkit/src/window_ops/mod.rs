@@ -1,7 +1,10 @@
+use crate::{WasmToolkitError, WasmToolkitResult};
+
+mod language;
 mod location;
 mod match_media;
-
-use crate::{WasmToolkitError, WasmToolkitResult};
+mod scroll;
+mod storage;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct WasmWindow(web_sys::Window);

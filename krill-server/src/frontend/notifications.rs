@@ -9,32 +9,33 @@ use crate::frontend::{SvgNotificationBell, NOTIFICATION_MANAGER};
 pub fn NotificationComponent() -> Element {
     // let events_queue = use_signal(|| VecDeque::<(String, NotificationType)>::new());
 
-    // spawn({
-    //     let mut events_queue = events_queue;
-    //     async move {
-    //         while let Ok(notification_received) =
-    //             NOTIFICATION_MANAGER.receiver().lock().await.recv().await
-    //         {
-    //             let (secs, element_id) = match &notification_received {
-    //                 NotificationType::Failure(value) => (
-    //                     5000,
-    //                     blake3::hash(value.to_string().as_bytes())
-    //                         .to_hex()
-    //                         .to_string(),
-    //                 ),
-    //                 NotificationType::Success(value) => {
-    //                     (5000, blake3::hash(value.as_bytes()).to_hex().to_string())
-    //                 }
-    //             };
+    spawn({
+        // let mut events_queue = events_queue;
+        async move {
+            while let Ok(notification_received) =
+                NOTIFICATION_MANAGER.receiver().lock().await.recv().await
+            {
+                tracing::error!("NOTIFICATION ERROR: {notification_received:?}");
+                // let (secs, element_id) = match &notification_received {
+                //     NotificationType::Failure(value) => (
+                //         5000,
+                //         blake3::hash(value.to_string().as_bytes())
+                //             .to_hex()
+                //             .to_string(),
+                //     ),
+                //     NotificationType::Success(value) => {
+                //         (5000, blake3::hash(value.as_bytes()).to_hex().to_string())
+                //     }
+                // };
 
-    //             events_queue
-    //                 .write()
-    //                 .push_back((element_id.clone(), notification_received));
+                // events_queue
+                //     .write()
+                //     .push_back((element_id.clone(), notification_received));
 
-    //             // schedule_removal(events_queue, secs, element_id)
-    //         }
-    //     }
-    // });
+                // schedule_removal(events_queue, secs, element_id)
+            }
+        }
+    });
 
     // let events = events_queue.read();
 

@@ -2,9 +2,8 @@
     display: grid;
 
     /* On mobile: 4 columns, auto rows (creates new rows as needed) */
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(8, 1fr);
     grid-auto-rows: 1fr;
-    /* Each row takes equal height */
 
     gap: 1em;
 
@@ -15,19 +14,85 @@
     align-content: center;
 }
 
-/* Grid items */
+/* Large screens */
+@media (max-width: 40rem) {
+    .krill-grid-passcode {
+        grid-template-columns: repeat(4, 1fr);
+        /* 8 columns on large screens */
+        /* Remove grid-template-rows - let auto-rows handle it */
+    }
+}
+
 .krill-grid-item-input {
     width: 100%;
-    max-width: 50px;
-    /* Ensure square shape */
+    max-width: 40px;
+    min-width: 30px;
     aspect-ratio: 1;
 }
 
-/* Large screens */
-@media (min-width: 768px) {
-    .krill-grid-passcode {
-        grid-template-columns: repeat(8, 1fr);
-        /* 8 columns on large screens */
-        /* Remove grid-template-rows - let auto-rows handle it */
+.grid-column-7 {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    /* 4 rows with automatic height */
+    width: 100%;
+    align-items: center;
+    justify-items: center;
+}
+
+.grid-column-7 .item {
+    width: 100%;
+    padding: 10px;
+    box-sizing: border-box;
+    aspect-ratio: 1;
+}
+
+
+.grid-column-7 .item-bar {
+    position: relative;
+    min-width: 20px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+
+.grid-column-7 .item-bar::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: var(--primary-color);
+    transform: translateY(-50%);
+    border-radius: 50px;
+}
+
+
+.grid-2-children {
+    display: grid;
+    grid-template-rows: 35dvh 65dvh;
+    height: 100dvh;
+}
+
+.loader {
+    width: 100%;
+    height: 6px;
+    display: inline-block;
+    background-color: var(--primary-color);
+    background-image: linear-gradient(45deg, rgba(0, 0, 0, 0.25) 25%, transparent 25%, transparent 50%, rgba(0, 0, 0, 0.25) 50%, rgba(0, 0, 0, 0.25) 75%, transparent 75%, transparent);
+    font-size: 30px;
+    background-size: 1em 1em;
+    box-sizing: border-box;
+    animation: barStripe 1s linear infinite;
+    border-radius: 50px;
+}
+
+@keyframes barStripe {
+    0% {
+        background-position: 1em 0;
+    }
+
+    100% {
+        background-position: 0 0;
     }
 }

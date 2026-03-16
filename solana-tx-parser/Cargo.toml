@@ -1,0 +1,18 @@
+[package]
+name = "solana-tx-parser"
+version.workspace = true
+authors.workspace = true
+description.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+license.workspace = true
+edition.workspace = true
+
+[dependencies]
+serde_json.workspace = true
+reqwest.workspace = true
+jzon.workspace = true
+krill-common.workspace = true
+async-dup.workspace = true
+serde.workspace = true

@@ -48,6 +48,16 @@ impl Notifications {
         }
     }
 
+    /// Logs the error to console instead of returning it
+    pub async fn send_final_success(&self, message: String) {
+        self.send_final(NotificationType::Success(message)).await
+    }
+
+    /// Logs the error to console instead of returning it
+    pub async fn send_final_error(&self, error: WasmToolkitError) {
+        self.send_final(NotificationType::Failure(error)).await
+    }
+
     pub fn schedule_removal(&self, secs: u32, element_id: String) {
         let element_id = Rc::new(element_id);
 

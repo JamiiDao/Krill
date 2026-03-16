@@ -7,15 +7,14 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-krill-common.workspace = true
+krill-common = { workspace = true, features = ["fs"] }
 krill-store = { workspace = true, optional = true }
+krill-mail = { workspace = true, optional = true }
+solana-tx-parser = { workspace = true, optional = true }
 
 dioxus = { version = "0.7", features = ["fullstack", "router"] }
 axum = { version = "0.8", optional = true }
-reqwest = { version = "0.13.1", default-features = false, features = [
-    "rustls",
-    "http2",
-] }
+reqwest.workspace = true
 tracing = "0.1.44"
 wasm-toolkit.workspace = true
 async-dup = { workspace = true, optional = true }
@@ -28,17 +27,26 @@ fastrand = { version = "2.3.0", features = ["getrandom", "js"] }
 futures-lite = { version = "2.6.1", optional = true }
 tower-http = { version = "0.6.8", optional = true }
 axum-extra = { version = "0.12.5", features = ["cookie"], optional = true }
-blake3 = { workspace = true, optional = true }
-base64ct = { version = "1.8.3", features = ["std"] }
+blake3 = { workspace = true }
+base64ct.workspace = true
 bitcode = { workspace = true }
-yansi = "1.0.1"
+yansi = { version = "1.0.1", optional = true }
 web-sys = { workspace = true, features = ["Window", "Document", "Element"] }
+serde_json.workspace = true
+serde.workspace = true
+bytes.workspace = true
+jzon.workspace = true
+countries-iso3166.workspace = true
+tokio = { version = "1.50.0", default-features = false, optional = true }
+byte_prefix = "1.0.0"
+url.workspace = true
 
 [features]
 web = ["dioxus/web", "dep:async-channel"]
 default = []
 server = [
     "dep:krill-store",
+    "dep:krill-mail",
     "axum",
     "dioxus/server",
     "dep:async-lock",
@@ -47,7 +55,10 @@ server = [
     "dep:async-channel",
     "dep:tower-http",
     "dep:futures-lite",
-    "dep:blake3",
     "dep:axum-extra",
+    "dep:tokio",
+    "dep:yansi",
+    "dep:solana-tx-parser",
+
 ]
 tokio = []

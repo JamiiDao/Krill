@@ -2,14 +2,17 @@ use std::sync::OnceLock;
 
 use async_dup::Arc;
 use async_lock::RwLock;
-use krill_common::{AdminConfiguration, KrillError, KrillResult};
+use krill_common::{AdminConfiguration, KrillError, KrillResult, ServerConfigurationState};
+use krill_mail::KrillSmtps;
 use krill_store::KrillStorage;
 use yansi::Paint;
 
 pub static SERVER_KEY: OnceLock<[u8; 32]> = OnceLock::new();
 pub static KRILL_STORAGE: OnceLock<KrillStorage> = OnceLock::new();
-pub static SERVER_COLOR_SCHEME: OnceLock<Vec<u8>> = OnceLock::new();
+pub static SERVER_ORG_INFO: OnceLock<Vec<u8>> = OnceLock::new();
+pub static SUPPORTED_LANGUAGES: OnceLock<Vec<String>> = OnceLock::new();
 pub(crate) static ADMIN_SECRET: OnceLock<Arc<RwLock<AdminConfiguration>>> = OnceLock::new();
+pub(crate) static SERVER_MAIL_CONNECTION: OnceLock<KrillSmtps> = OnceLock::new();
 
 pub fn store() -> KrillResult<&'static KrillStorage> {
     KRILL_STORAGE
@@ -30,14 +33,17 @@ pub(crate) fn init_server_statics() -> KrillResult<()> {
         let app_state = crate::backend::state::load_app_state(store).await?;
         load_server_key(store).await?;
         load_color_scheme(store).await?;
+        load_supported_languages(store).await?;
 
         let cmd_print = ConfigPrint::new(100);
 
-        if !app_state {
+        if app_state == ServerConfigurationState::Uninitialized {
             use krill_common::AdminConfiguration;
             use yansi::Paint;
 
             let secret = AdminConfiguration::new();
+
+            tracing::info!("NEW ADMIN SECRET CREATED");
 
             ADMIN_SECRET
                 .set(Arc::new(RwLock::new(secret)))
@@ -63,14 +69,16 @@ pub(crate) fn init_server_statics() -> KrillResult<()> {
             ]);
             cmd_print.print_multiple_blanks(2);
             cmd_print.calc_and_print(
-                "This is the 8 digit admin passcode for the server."
+                "This is the 8 digit admininstrator passcode for the server."
                     .green()
                     .on_black(),
             );
             cmd_print.print_blank();
             cmd_print.calc_and_print_multiple(&[
-                "Admin code valid for ".green().on_black(),
-                "30 Minutes".red().bold().underline().on_black(),
+                "This  admininstrator passcode is valid for "
+                    .green()
+                    .on_black(),
+                "60 Minutes".red().bold().underline().on_black(),
             ]);
             cmd_print.print_blank();
             cmd_print.calc_and_print(
@@ -121,11 +129,19 @@ async fn load_server_key(store: &KrillStorage) -> KrillResult<()> {
 }
 
 async fn load_color_scheme(store: &KrillStorage) -> KrillResult<()> {
-    let scheme = store.get_branding_data_bytes().await?;
+    let scheme = store.get_org_info_bytes().await?;
 
-    SERVER_COLOR_SCHEME
+    SERVER_ORG_INFO
         .set(scheme)
         .or(Err(KrillError::UnableToGetColorScheme))
+}
+
+async fn load_supported_languages(store: &KrillStorage) -> KrillResult<()> {
+    let langs = store.get_supported_languages().await?;
+
+    SUPPORTED_LANGUAGES
+        .set(langs)
+        .or(Err(KrillError::UnableToGetSupportedLanguages))
 }
 
 #[derive(Debug, Clone, Copy)]

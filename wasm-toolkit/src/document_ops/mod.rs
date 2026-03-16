@@ -4,6 +4,9 @@ mod css_variables;
 mod elements;
 mod focus;
 
+mod dropzone;
+pub use dropzone::*;
+
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct WasmDocument(Document);
 
