@@ -37,7 +37,9 @@ bitcode = "0.6.7"
 async-dup = "1.2.4"
 async-lock = "3.4.2"
 async-channel = "2.5.0"
-blake3 = "1.8.3"
+blake3 = { version = "1.8.3", default-features = false, features = [
+    "wasm32_simd",
+] }
 dirs = "6.0.0"
 smol = "2.0.2"
 rand = "=0.8"

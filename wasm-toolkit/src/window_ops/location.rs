@@ -159,10 +159,4 @@ impl WasmWindow {
     pub fn navigator(&self) -> web_sys::Navigator {
         self.inner().navigator()
     }
-
-    pub fn language(&self) -> WasmToolkitResult<String> {
-        self.navigator()
-            .language()
-            .ok_or(WasmToolkitError::BrowserLanguageNotFound)
-    }
 }

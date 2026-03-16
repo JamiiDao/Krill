@@ -1,3 +1,5 @@
+use bitcode::{Decode, Encode};
+
 #[cfg(feature = "random")]
 use core::fmt;
 #[cfg(feature = "random")]
@@ -10,8 +12,6 @@ use zeroize::Zeroizing;
 
 #[cfg(feature = "random")]
 use crate::RandomChars;
-
-use bitcode::{Decode, Encode};
 
 pub type Message32ByteHash = [u8; 32];
 
@@ -46,8 +46,8 @@ impl AdminConfiguration {
         &self.timestamp
     }
 
-    pub fn is_expired_after_30(&self) -> bool {
-        self.is_expired(Duration::from_mins(30))
+    pub fn is_expired_after_60(&self) -> bool {
+        self.is_expired(Duration::from_mins(60))
     }
 
     pub fn is_expired(&self, duration: Duration) -> bool {

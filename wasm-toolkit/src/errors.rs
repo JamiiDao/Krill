@@ -1,3 +1,5 @@
+use wasm_bindgen::JsCast;
+
 pub type WasmToolkitResult<T> = Result<T, WasmToolkitError>;
 
 #[derive(Debug, PartialEq, Eq, Clone, thiserror::Error)]
@@ -34,8 +36,10 @@ pub enum WasmToolkitError {
     AddEventListener(String),
     #[error("`window.document.documentElement` is missing!")]
     MissingDocumentElement,
-    #[error("Unable to case `window.document.documentElement` to `web_sys::HtmlElement`")]
+    #[error("Unable to cast `window.document.documentElement` to `web_sys::HtmlElement`")]
     UnableToCastElementToHtmlElement,
+    #[error("Unable to cast `{0}` to `js_sys::Error`. The value is probably not an error")]
+    UnableToCastToJsErrorObject(String),
     #[error("Unable to set a CSS property")]
     UnableToSetCssProperty,
     #[error(
@@ -46,4 +50,39 @@ pub enum WasmToolkitError {
     UnableToFocusHtmlElement(String),
     #[error("Unable to remove keyboard focus from current focused element")]
     UnableToRemoveKeyboardFocus,
+    #[error("{name} - {message}")]
+    JsError { name: String, message: String },
+    #[error("Session Storage not found in the window")]
+    SessionStorageNotFound,
+    #[error("Local Storage not found in the window")]
+    LocalStorageNotFound,
+}
+
+impl WasmToolkitError {
+    pub fn parse_js_error(error: wasm_bindgen::JsValue, fallback_error: &str) -> Self {
+        match error.dyn_into::<js_sys::Error>() {
+            Ok(value) => {
+                let error: WasmToolkitError = value.into();
+
+                error
+            }
+            Err(_) => WasmToolkitError::UnableToCastToJsErrorObject(fallback_error.to_string()),
+        }
+    }
+}
+
+impl From<js_sys::Error> for WasmToolkitError {
+    fn from(value: js_sys::Error) -> Self {
+        let name = value
+            .name()
+            .as_string()
+            .unwrap_or("Unable to get the `name` value of `js_sys::Error`.".to_string());
+
+        let message = value
+            .message()
+            .as_string()
+            .unwrap_or("Unable to get the `message` value of `js_sys::Error`.".to_string());
+
+        Self::JsError { name, message }
+    }
 }

@@ -1,8 +1,10 @@
 use std::io::ErrorKind;
 
-use crate::{KrillUtils, Message32ByteHash, SupportedLanguages};
+use crate::{KrillUtils, Message32ByteHash};
 
 pub type KrillResult<T> = Result<T, KrillError>;
+
+// TODO add codes for to_string()
 
 #[derive(Debug, PartialEq, Eq, Clone, thiserror::Error)]
 pub enum KrillError {
@@ -13,9 +15,9 @@ pub enum KrillError {
     #[error("The line `{0}` is not a valid `code = translation` entry. An example of a valid entry is `en = Hello World`.")]
     InvalidLanguageEntry(&'static str),
     #[error("Encountered an invalid BCP47 Code `{0}`.")]
-    LanguageNotValidBcp47Code(&'static str),
-    #[error("The translation for `{lang}` was not found.", lang = .0.as_str())]
-    LanguageTranslationNotFound(SupportedLanguages),
+    LanguageNotValidBcp47Code(String),
+    #[error("The translation for `{0}` was not found.")]
+    LanguageTranslationNotFound(String),
     #[cfg(feature = "home-dir")]
     #[error("Unable to locate the home directory")]
     UnableToFindHomeDirectory,
@@ -151,7 +153,7 @@ pub enum KrillError {
     #[cfg(feature = "storage")]
     #[error("Unable to deserialize bytes into FrostDkgData struct.")]
     UnableToDeserializeFrostDkgData,
-    #[cfg(feature = "storage")]
+    #[cfg(any(feature = "storage", feature = "fs"))]
     #[error("Encountered I/O error: `{0}`")]
     Io(ErrorKind),
     #[cfg(feature = "storage")]
@@ -281,6 +283,12 @@ pub enum KrillError {
     Mailer(String),
     #[error("Unable to delivery email. Error: `{0}`!")]
     MailDelivery(String),
+    #[error("Unable to translate language information from JSON file provided")]
+    UnableToParseTranslationFromJson5,
+    #[error("{0}")]
+    FatalUi(String),
+    #[error("{0}")]
+    InvalidLanguageTranslationPath(String),
 }
 
 #[cfg(feature = "storage")]
@@ -290,5 +298,12 @@ impl From<fjall::Error> for KrillError {
             fjall::Error::Io(io_error) => Self::Io(io_error.kind()),
             _ => Self::Store(error.to_string()),
         }
+    }
+}
+
+#[cfg(feature = "fs")]
+impl From<std::io::Error> for KrillError {
+    fn from(value: std::io::Error) -> Self {
+        Self::Io(value.kind())
     }
 }

@@ -7,7 +7,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-krill-common.workspace = true
+krill-common = { workspace = true, features = ["fs"] }
 krill-store = { workspace = true, optional = true }
 
 dioxus = { version = "0.7", features = ["fullstack", "router"] }
@@ -31,8 +31,15 @@ axum-extra = { version = "0.12.5", features = ["cookie"], optional = true }
 blake3 = { workspace = true, optional = true }
 base64ct = { version = "1.8.3", features = ["std"] }
 bitcode = { workspace = true }
-yansi = "1.0.1"
+yansi = { version = "1.0.1", optional = true }
 web-sys = { workspace = true, features = ["Window", "Document", "Element"] }
+serde_json = "1.0.149"
+serde = { version = "1.0.228", features = ["derive"] }
+countries-iso3166 = { version = "1.5.2", features = ["std", "small_keys"] }
+dir-meta = { version = "0.7.0", default-features = false, features = [
+    "async",
+], optional = true }
+tokio = { version = "1.50.0", default-features = false, optional = true }
 
 [features]
 web = ["dioxus/web", "dep:async-channel"]
@@ -49,5 +56,8 @@ server = [
     "dep:futures-lite",
     "dep:blake3",
     "dep:axum-extra",
+    "dep:dir-meta",
+    "dep:tokio",
+    "dep:yansi",
 ]
 tokio = []

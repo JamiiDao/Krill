@@ -20,7 +20,10 @@ pub(crate) async fn check_app_state(request: Request, next: Next) -> impl IntoRe
     let path = request.uri().path();
 
     // Load paths like login without auth
-    if path.starts_with("/login") || path.starts_with("/logout") {
+    if path.contains("/api/langs_with_translations")
+        || path.starts_with("/logout")
+        || path.starts_with("/logout")
+    {
         return next.run(request).await;
     }
 

@@ -5,6 +5,7 @@ pub const TAILWIND_CSS: Asset = asset!("/assets/tailwind.css");
 pub const FONT_STYLES: Asset = asset!("/assets/fonts/fonts-stylesheet.css");
 
 pub const FAVICON: Asset = asset!("/assets/favicon.png");
+pub const LOGO: Asset = asset!("/assets/krill-logo.svg");
 
 pub const COMMIT_MONO_FONT: Asset = asset!("/assets/fonts/commitmono_regular-webfont.woff2");
 
@@ -12,6 +13,8 @@ pub const BUNGEE_HAIRLINE_FONT: Asset =
     asset!("/assets/fonts/bungeehairline-regular-webfont.woff2");
 
 pub const MARKO_ONE_FONT: Asset = asset!("/assets/fonts/markoone-regular-webfont.woff2");
+
+const _: Asset = asset!("/assets/icons", AssetOptions::folder());
 
 pub fn extra_css_styles() -> Element {
     rsx! {

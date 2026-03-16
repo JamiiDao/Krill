@@ -1,5 +1,7 @@
+mod language;
 mod location;
 mod match_media;
+mod storage;
 
 use crate::{WasmToolkitError, WasmToolkitResult};
 

@@ -13,8 +13,14 @@ pub use notifications::*;
 mod assets;
 pub use assets::*;
 
+mod asset_icons;
+pub use asset_icons::*;
+
 mod svg_icons;
 pub use svg_icons::*;
 
 mod components;
 pub use components::*;
+
+mod translations;
+pub use translations::*;

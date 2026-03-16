@@ -10,3 +10,6 @@ pub use init_store::*;
 mod state;
 #[cfg(feature = "server")]
 pub use state::*;
+
+mod lang_loader;
+pub use lang_loader::*;

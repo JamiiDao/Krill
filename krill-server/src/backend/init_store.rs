@@ -63,14 +63,16 @@ pub(crate) fn init_server_statics() -> KrillResult<()> {
             ]);
             cmd_print.print_multiple_blanks(2);
             cmd_print.calc_and_print(
-                "This is the 8 digit admin passcode for the server."
+                "This is the 8 digit admininstrator passcode for the server."
                     .green()
                     .on_black(),
             );
             cmd_print.print_blank();
             cmd_print.calc_and_print_multiple(&[
-                "Admin code valid for ".green().on_black(),
-                "30 Minutes".red().bold().underline().on_black(),
+                "This  admininstrator passcode is valid for "
+                    .green()
+                    .on_black(),
+                "60 Minutes".red().bold().underline().on_black(),
             ]);
             cmd_print.print_blank();
             cmd_print.calc_and_print(

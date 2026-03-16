@@ -1,3 +1,5 @@
+#![allow(clippy::redundant_closure)]
+
 mod frontend;
 pub(crate) use frontend::*;
 
@@ -10,6 +12,9 @@ fn main() {
 
     #[cfg(feature = "server")]
     crate::init_server_statics().unwrap();
+
+    #[cfg(feature = "server")]
+    crate::init_translations();
 
     #[cfg(feature = "server")]
     dioxus::serve(|| async move {
