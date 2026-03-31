@@ -7,7 +7,9 @@ pub use utils::*;
 mod types;
 pub use types::*;
 
+#[cfg(feature = "languages")]
 mod language;
+#[cfg(feature = "languages")]
 pub use language::*;
 
 mod app_state;

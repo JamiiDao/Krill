@@ -9,18 +9,24 @@ use axum::{
     response::{IntoResponse, Redirect},
 };
 use axum_extra::extract::CookieJar;
-use krill_common::{KrillError, KrillResult};
+use krill_common::{KrillError, KrillResult, ServerConfigurationState};
 use krill_store::{KrillStorage, ServerCookie};
 
-use crate::{app, RouteUtils};
+use crate::RouteUtils;
 
-pub(crate) static SERVER_APP_STATE: OnceLock<Arc<RwLock<bool>>> = OnceLock::new();
+pub(crate) static SERVER_APP_STATE: OnceLock<Arc<RwLock<ServerConfigurationState>>> =
+    OnceLock::new();
 
 pub(crate) async fn check_app_state(request: Request, next: Next) -> impl IntoResponse {
     let path = request.uri().path();
 
     // Load paths like login without auth
-    if path.starts_with("/login") || path.starts_with("/logout") {
+    if path.starts_with("/api/supported_languages")
+        || path.starts_with("/login")
+        || path.starts_with("/login-init")
+        || path.starts_with("/logout")
+        || path.starts_with("/api/verification_stream")
+    {
         return next.run(request).await;
     }
 
@@ -43,13 +49,16 @@ pub(crate) async fn check_app_state(request: Request, next: Next) -> impl IntoRe
         Err(_) => return Redirect::temporary(RouteUtils::APP_ERROR).into_response(),
     };
 
-    if !state {
+    if state == ServerConfigurationState::Uninitialized {
         // allow configuration page itself
         if path == RouteUtils::CONFIGURATION {
             return next.run(request).await;
         }
 
         return Redirect::temporary(RouteUtils::CONFIGURATION).into_response();
+    }
+    if state == ServerConfigurationState::LoginInitialization {
+        return Redirect::temporary(RouteUtils::LOGIN_INIT).into_response();
     }
 
     // App configured
@@ -60,7 +69,7 @@ pub(crate) async fn check_app_state(request: Request, next: Next) -> impl IntoRe
     }
 }
 
-pub(crate) async fn load_app_state(store: &KrillStorage) -> KrillResult<bool> {
+pub(crate) async fn load_app_state(store: &KrillStorage) -> KrillResult<ServerConfigurationState> {
     let app_state = store.get_app_state().await?;
 
     SERVER_APP_STATE
@@ -70,7 +79,7 @@ pub(crate) async fn load_app_state(store: &KrillStorage) -> KrillResult<bool> {
     Ok(app_state)
 }
 
-pub async fn server_state() -> KrillResult<bool> {
+pub async fn server_state() -> KrillResult<ServerConfigurationState> {
     let state = SERVER_APP_STATE
         .get()
         .ok_or(KrillError::AppStateMachineNotInitialized)?;

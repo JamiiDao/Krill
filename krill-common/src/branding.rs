@@ -61,6 +61,15 @@ impl Default for DynamicColorScheme {
     }
 }
 
+#[derive(Debug, PartialEq, Eq, Encode, Decode, Clone, Default)]
+pub struct OrganizationInfo {
+    pub name: String,
+    pub logo: (Vec<u8>, String),
+    pub favicon: (Vec<u8>, String),
+    pub support_mail: String,
+    pub color_scheme: ColorScheme,
+}
+
 /// Colors are defined by CSS `color:var(--user-color)` variables globally
 #[derive(Debug, PartialEq, Eq, Encode, Decode, Clone)]
 pub struct ColorScheme {
@@ -217,7 +226,7 @@ impl<'a> Default for BrandColors<'a> {
     fn default() -> Self {
         Self {
             primary: "#FF6600",
-            secondary: "#0B0414",
+            secondary: "#ff7400",
             accent: "#FFFFFF",
             background_dark: ColorScheme::pitch_black(),
             background_light: "#eaeaea",

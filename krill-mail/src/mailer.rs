@@ -56,4 +56,11 @@ impl<'a> KrillSmtps<'a> {
             .await
             .map_err(|error| KrillError::MailDelivery(error.to_string()))
     }
+
+    pub async fn test_connection(&self) -> KrillResult<bool> {
+        self.mailer
+            .test_connection()
+            .await
+            .map_err(|error| KrillError::Mailer(error.to_string()))
+    }
 }

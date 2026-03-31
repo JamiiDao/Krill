@@ -1,5 +1,4 @@
 use dioxus::prelude::*;
-use krill_common::{SupportedLanguages, Translator};
 use wasm_toolkit::NotificationType;
 
 use crate::{
@@ -12,28 +11,6 @@ use crate::{
 pub fn Home() -> Element {
     let mut count = use_signal(|| 0);
     let mut text = use_signal(|| "...".to_string());
-    let mut language = use_signal(|| SupportedLanguages::English);
-
-    let server_fn_translations = use_signal(|| {
-        Translator::new(SERVER_FN)
-            .map_err(|error| tracing::error!(">>> {}", error.to_string()))
-            .unwrap()
-    });
-
-    // let data = use_server_future(|| crate::backend::fetch_posts())?;
-
-    // tracing::error!("DATA: {:?}", data);
-
-    use_effect(move || {
-        tracing::info!("{:?}", server_fn_translations);
-
-        let detect_language = WINDOW.read().language().unwrap();
-        tracing::info!("LANG: {}", &detect_language);
-        match SupportedLanguages::from_bcp47(&detect_language) {
-            None => tracing::error!("NO LANG FOUND"),
-            Some(supported_lang) => language.set(supported_lang),
-        }
-    });
 
     use_resource(|| async move {
         tracing::info!("{}", WINDOW.read().language().unwrap());
@@ -58,7 +35,7 @@ pub fn Home() -> Element {
 
     rsx! {
         Link { to: Route::Blog { id: count() }, "Go to blog" }
-        div {class:"text-red-500",
+        div { class: "text-red-500",
             // {if let Some(value) =  data.result(){
             //     let value = value.unwrap();
             //     rsx!{div {"BRANDING DATA FOUND: {value}"}}
@@ -90,9 +67,7 @@ pub fn Home() -> Element {
                     post_server_data(data).await?;
                     Ok(())
                 },
-                {
-                    server_fn_translations.read().translate_to(*language.read())
-                }
+                {"Translations go here"}
             }
             "Server response ->: {text}"
         }
@@ -120,26 +95,27 @@ pub fn Blog(id: i32) -> Element {
 #[component]
 pub fn AppError() -> Element {
     rsx! {
-        div {"AppError ROUTE"}
+        div { "AppError ROUTE" }
+    }
+}
+
+#[component]
+pub fn LoginInit() -> Element {
+    rsx! {
+        div { "LOGIN INIT ROUTE" }
     }
 }
 
 #[component]
 pub fn Login() -> Element {
     rsx! {
-        div {"LOGIN ROUTE"}
+        div { "LOGIN ROUTE" }
     }
 }
 
 #[component]
 pub fn NotFound() -> Element {
     rsx! {
-        div {"NOT FOUND"}
+        div { "NOT FOUND" }
     }
 }
-
-const SERVER_FN: &str = r#"
-
-en = "Run server fn!"
-zh = "运行服务器函数！"
-"#;

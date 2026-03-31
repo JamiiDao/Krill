@@ -13,6 +13,7 @@ edition.workspace = true
 storage = ["dep:fjall"]
 home-dir = []
 random = ["dep:rand_chacha"]
+fs = []
 
 [dependencies]
 thiserror.workspace = true

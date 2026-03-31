@@ -4,13 +4,14 @@ use async_dup::Arc;
 use bitcode::{Decode, Encode};
 use camino::Utf8PathBuf;
 use fjall::{KeyspaceCreateOptions, PersistMode, SingleWriterTxDatabase, SingleWriterTxKeyspace};
-use krill_common::{KrillError, KrillResult, KrillUtils};
+use krill_common::{KrillResult, KrillUtils};
 
 pub struct KrillStorage {
     store: Arc<fjall::SingleWriterTxDatabase>,
     secrets: Arc<SingleWriterTxKeyspace>,
-    branding: Arc<SingleWriterTxKeyspace>,
+    org_info: Arc<SingleWriterTxKeyspace>,
     app_state: Arc<SingleWriterTxKeyspace>,
+    languages: Arc<SingleWriterTxKeyspace>,
 }
 
 impl KrillStorage {
@@ -33,18 +34,23 @@ impl KrillStorage {
             })?;
 
             #[allow(clippy::redundant_closure)]
-            let branding =
-                db.keyspace(Self::KEYSPACE_BRANDING, || KeyspaceCreateOptions::default())?;
+            let org_info =
+                db.keyspace(Self::KEYSPACE_ORG_INFO, || KeyspaceCreateOptions::default())?;
 
             let app_state = db.keyspace(Self::KEYSPACE_APP_STATE, || {
+                KeyspaceCreateOptions::default()
+            })?;
+
+            let languages = db.keyspace(Self::KEYSPACE_SUPPORTED_LANGUAGES, || {
                 KeyspaceCreateOptions::default()
             })?;
 
             Ok(Self {
                 store: Arc::new(db),
                 secrets: Arc::new(secrets),
-                branding: Arc::new(branding),
+                org_info: Arc::new(org_info),
                 app_state: Arc::new(app_state),
+                languages: Arc::new(languages),
             })
         })
         .await
@@ -92,12 +98,35 @@ impl KrillStorage {
         self.secrets.clone()
     }
 
-    pub fn branding_keyspace(&self) -> Arc<SingleWriterTxKeyspace> {
-        self.branding.clone()
+    pub fn org_info_keyspace(&self) -> Arc<SingleWriterTxKeyspace> {
+        self.org_info.clone()
     }
 
     pub fn app_state_keyspace(&self) -> Arc<SingleWriterTxKeyspace> {
         self.app_state.clone()
+    }
+
+    pub fn languages_keyspace(&self) -> Arc<SingleWriterTxKeyspace> {
+        self.languages.clone()
+    }
+
+    pub async fn remove_op(
+        &self,
+        keyspace: Arc<fjall::SingleWriterTxKeyspace>,
+        key: impl AsRef<str>,
+    ) -> KrillResult<()> {
+        let db = self.db();
+
+        let key = key.as_ref().to_owned();
+
+        blocking::unblock(move || {
+            keyspace.remove(key)?;
+
+            db.persist(PersistMode::SyncAll)?;
+
+            Ok(())
+        })
+        .await
     }
 }
 

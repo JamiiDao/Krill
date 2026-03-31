@@ -20,3 +20,4 @@ blocking.workspace = true
 bitcode.workspace = true
 blake3.workspace = true
 tai64.workspace = true
+countries-iso3166.workspace = true

@@ -5,6 +5,7 @@ members = [
     "krill-mail",
     "krill-server",
     "krill-store",
+    "solana-tx-parser",
     "wasm-toolkit",
 ]
 resolver = "3"
@@ -30,6 +31,8 @@ krill-common = { path = "./krill-common" }
 wasm-toolkit = { path = "./wasm-toolkit" }
 krill-frost = { path = "./krill-frost" }
 krill-store = { path = "./krill-store" }
+krill-mail = { path = "./krill-mail" }
+solana-tx-parser = { path = "./solana-tx-parser" }
 
 tai64 = "4.1.0"
 thiserror = { version = "2.0.18", default-features = false }
@@ -37,7 +40,9 @@ bitcode = "0.6.7"
 async-dup = "1.2.4"
 async-lock = "3.4.2"
 async-channel = "2.5.0"
-blake3 = "1.8.3"
+blake3 = { version = "1.8.4", default-features = false, features = [
+    "wasm32_simd",
+] }
 dirs = "6.0.0"
 smol = "2.0.2"
 rand = "=0.8"
@@ -50,6 +55,15 @@ zeroize = { version = "1.8.2", default-features = false }
 wasm-bindgen = "0.2.108"
 wasm-bindgen-futures = "0.4.58"
 js-sys = "0.3.85"
+base64ct = { version = "1.8.3", features = ["std"] }
+serde_json = "1.0.149"
+serde = { version = "1.0.228", features = ["derive"] }
+bytes = "1.11.1"
+jzon = "0.12.5"
+reqwest = { version = "0.13.1", default-features = false, features = [
+    "rustls",
+    "http2",
+] }
 web-sys = { version = "0.3.85", features = [
     "Window",
     "Document",
@@ -61,9 +75,24 @@ web-sys = { version = "0.3.85", features = [
     "Navigator",
     "MediaQueryList",
     "CssStyleDeclaration",
+    "DomTokenList",
+    "DragEvent",
+    "DataTransfer",
+    "File",
+    "FileList",
+    "Blob",
     "Event",
+    "HtmlInputElement",
+    "ScrollBehavior",
+    "ScrollToOptions",
 ] }
 gloo-timers = { version = "0.3.0", default-features = false }
+countries-iso3166 = { version = "1.6.0", features = [
+    "std",
+    "small_keys",
+    "serde",
+] }
+url = "2.5.8"
 
 
 [profile.release]

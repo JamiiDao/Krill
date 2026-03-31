@@ -160,9 +160,11 @@ impl WasmWindow {
         self.inner().navigator()
     }
 
-    pub fn language(&self) -> WasmToolkitResult<String> {
-        self.navigator()
-            .language()
-            .ok_or(WasmToolkitError::BrowserLanguageNotFound)
+    pub fn reload_page(&self) -> WasmToolkitResult<()> {
+        self.location().reload().map_err(|error| {
+            let outcome: String = WasmToolkitCommon::exception_or_stringify(&error);
+
+            WasmToolkitError::PageReload(outcome)
+        })
     }
 }
