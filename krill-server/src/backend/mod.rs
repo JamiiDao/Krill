@@ -1,5 +1,4 @@
 mod home;
-pub use home::*;
 
 #[cfg(feature = "server")]
 mod init_store;
@@ -16,3 +15,8 @@ pub use languages::*;
 
 mod verification;
 pub use verification::*;
+
+#[cfg(feature = "server")]
+mod server_utils;
+#[cfg(feature = "server")]
+pub use server_utils::*;

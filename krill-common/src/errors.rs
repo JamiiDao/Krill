@@ -8,6 +8,10 @@ pub type KrillResult<T> = Result<T, KrillError>;
 
 #[derive(Debug, PartialEq, Eq, Clone, thiserror::Error)]
 pub enum KrillError {
+    #[error("The `SERVER_ORG_INFO` static is already set")]
+    SetOrgInfoStaticAlreadySet,
+    #[error("The `SERVER_ORG_INFO` is not set")]
+    ServerOrgInfoNotSet,
     #[error("The server key was not found")]
     ServerSecretNotFound,
     #[error("Unable to set the static `SERVER_SECRET`")]
@@ -280,13 +284,19 @@ pub enum KrillError {
     #[error("{0}")]
     Transmit(String),
     #[cfg(feature = "storage")]
-    #[error("Unable to decode the color scheme")]
-    UnableToGetColorScheme,
+    #[error("Unable to decode the organization's information")]
+    UnableToGetOrganizationInfo,
     #[cfg(feature = "storage")]
     #[error("Unable to get the supported languages")]
     UnableToGetSupportedLanguages,
+    #[error("Unable to decode Solana API KEY bytes stored in the database")]
+    UnableToDecodeSolanaApiKey,
+    #[error("Unable to decode the organization's domain name")]
+    UnableToOrgDomainName,
     #[error("Mail service configuration error. Check your SMTP configuration. Error: `{0}`!")]
     Mailer(String),
+    #[error("Unable to decode SMTPs bytes stored in the database")]
+    UnableToDecodeSmtps,
     #[error("Unable to delivery email. Error: `{0}`!")]
     MailDelivery(String),
     #[error("Unable to translate language information from JSON file provided")]
@@ -300,8 +310,18 @@ pub enum KrillError {
     SmtpsStaticAlreadyInitialized,
     #[error("{0}")]
     HttpClient(String),
+    #[error("{0}")]
+    HttpResponse(String),
     #[error("The request data is invalid. `{0}`")]
     InvalidRequestData(String),
+    #[error("Invalid Email Address. Error: `{0}`")]
+    InvalidEmailAddress(String),
+    #[error("{0}")]
+    Statics(&'static str),
+    #[error("{0:?}")]
+    Smtps(Vec<String>),
+    #[error("The cookie from the user was invalid")]
+    InvalidCookieAuthToken,
 }
 
 #[cfg(feature = "storage")]

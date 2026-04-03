@@ -1,11 +1,11 @@
 use dioxus::prelude::*;
 
-use crate::{AppError, Blog, Configuration, Home, Login, LoginInit, NotFound};
+use crate::{Configuration, Dashboard, Errors, Home, Login, NotFound, VerifySupportMail};
 
 #[derive(Clone, Routable, Debug, PartialEq)]
 pub enum Route {
-    #[route("/login-init")]
-    LoginInit {},
+    #[route("/verify-support-mail")]
+    VerifySupportMail {},
 
     #[route("/login")]
     Login {},
@@ -16,23 +16,24 @@ pub enum Route {
     #[route("/")]
     Home {},
 
+    #[route("/dashboard")]
+    Dashboard {},
+
     #[route("/404")]
     NotFound {},
 
-    #[route("/404")]
-    AppError {},
-
-    #[route("/blog/:id/")]
-    Blog { id: i32 },
+    #[route("/errors/:message")]
+    Errors { message: String },
 }
 
 pub struct RouteUtils;
 
 impl RouteUtils {
     pub const CONFIGURATION: &str = "/configuration";
-    pub const APP_ERROR: &str = "/apperror";
     pub const LOGIN: &str = "/login";
-    pub const LOGIN_INIT: &str = "/login-init";
-    pub const HOME: &str = "/home";
+    pub const LOGOUT: &str = "/logout";
+    pub const VERIFY_SUPPORT_MAIL: &str = "/verify-support-mail";
+    pub const DASHBOARD: &str = "/dashboard";
+    pub const ERRORS: &str = "/errors";
     pub const NOT_FOUND: &str = "/404";
 }

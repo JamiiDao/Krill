@@ -15,3 +15,6 @@ pub use secrets::*;
 
 mod verification;
 pub use verification::*;
+
+mod verify_support_mail;
+pub use verify_support_mail::*;

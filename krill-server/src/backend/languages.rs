@@ -1,5 +1,4 @@
 use dioxus::prelude::*;
-use serde::{Deserialize, Serialize};
 
 #[server]
 pub async fn supported_languages() -> ServerFnResult<Vec<String>> {

@@ -26,4 +26,7 @@ bitcode.workspace = true
 rand_chacha = { workspace = true, optional = true }
 blake3.workspace = true
 zeroize.workspace = true
-tai64.workspace = true
+tai64 = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+email_address = { version = "0.2.9", default-features = false }
+humantime = "2.3.0"

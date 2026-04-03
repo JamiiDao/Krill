@@ -47,7 +47,11 @@ pub fn Verification() -> Element {
                                 ..Default::default()
                             },
                             callback: move |_| {
-                                state_data.write().clear();
+                                if let Err(error) = state_data.write().clear() {
+                                    spawn(async move {
+                                        NOTIFICATION_MANAGER.send_final_error(error).await;
+                                    });
+                                }
 
                                 navigator().push("/email-verification");
                             },

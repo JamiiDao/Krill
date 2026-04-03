@@ -34,7 +34,7 @@ impl<'a> KrillSmtpsBuilder<'a> {
         self
     }
 
-    pub async fn build(self, smtps_uri: &str) -> KrillResult<KrillSmtps<'a>> {
+    pub fn build(self, smtps_uri: &str) -> KrillResult<KrillSmtps<'a>> {
         let transport = AsyncSmtpTransport::<Tokio1Executor>::from_url(smtps_uri)
             .map_err(|error| KrillError::Mailer(error.to_string()))?;
 

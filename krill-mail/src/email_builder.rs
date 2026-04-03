@@ -1,29 +1,29 @@
-#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct EmailEnvelopeDetails<'a> {
-    pub to: &'a str,
-    pub subject: &'a str,
-    pub body: &'a str,
+#[derive(Default, Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct EmailEnvelopeDetails {
+    pub to: String,
+    pub subject: String,
+    pub body: String,
 }
 
-impl<'a> EmailEnvelopeDetails<'a> {
+impl EmailEnvelopeDetails {
     pub fn new() -> Self {
         Self::default()
     }
 
-    pub fn set_to(mut self, to: &'a str) -> Self {
-        self.to = to;
+    pub fn set_to(mut self, to: &str) -> Self {
+        self.to = to.to_string();
 
         self
     }
 
-    pub fn set_subject(mut self, subject: &'a str) -> Self {
-        self.subject = subject;
+    pub fn set_subject(mut self, subject: &str) -> Self {
+        self.subject = subject.to_string();
 
         self
     }
 
-    pub fn set_body(mut self, body: &'a str) -> Self {
-        self.body = body;
+    pub fn set_body(mut self, body: &str) -> Self {
+        self.body = body.to_string();
 
         self
     }

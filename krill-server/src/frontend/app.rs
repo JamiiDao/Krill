@@ -230,4 +230,5 @@ async fn fetch_color_scheme() -> ServerFnResult<Vec<u8>> {
             code: 500,
             details: None,
         })
+        .map(|info| bitcode::encode(&info))
 }

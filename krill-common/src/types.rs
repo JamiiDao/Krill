@@ -1,5 +1,3 @@
-use bitcode::{Decode, Encode};
-
 #[cfg(feature = "random")]
 use core::fmt;
 #[cfg(feature = "random")]
@@ -7,8 +5,6 @@ use std::time::Duration;
 
 #[cfg(feature = "random")]
 use tai64::Tai64N;
-#[cfg(feature = "random")]
-use zeroize::Zeroizing;
 
 #[cfg(feature = "random")]
 use crate::RandomChars;
@@ -23,25 +19,10 @@ pub enum ServerConfigurationState {
     Initialized,
 }
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Encode, Decode)]
-pub enum UserRole {
-    Administrator,
-    Member,
-}
-
-impl UserRole {
-    pub fn as_str(&self) -> &str {
-        match self {
-            Self::Administrator => "administrator",
-            Self::Member => "member",
-        }
-    }
-}
-
 #[cfg(feature = "random")]
 pub struct AdminConfiguration {
     timestamp: Tai64N,
-    secret: Option<RandomChars<8>>,
+    secret: RandomChars<8>,
 }
 
 #[cfg(feature = "random")]
@@ -65,32 +46,20 @@ impl AdminConfiguration {
             .is_ok_and(|value| value > duration)
     }
 
-    pub fn secret(&self) -> Option<&RandomChars<8>> {
-        self.secret.as_ref()
+    pub fn secret(&self) -> &RandomChars<8> {
+        &self.secret
     }
 
-    pub fn to_string(&self) -> Option<Zeroizing<String>> {
-        self.secret.as_ref().map(|secret_chars| {
-            let mut outcome = Zeroizing::new(String::with_capacity(8));
-            secret_chars
-                .expose()
-                .iter()
-                .for_each(|char| outcome.push(*char));
-
-            outcome
-        })
+    pub fn secret_to_string(&self) -> String {
+        self.secret.expose().iter().collect::<String>()
     }
 
     pub fn const_cmp(&self, other: &str) -> bool {
-        if let Some(secret) = self.secret.as_ref() {
-            secret.const_cmp(other)
-        } else {
-            false
-        }
+        self.secret.const_cmp(other)
     }
 
     pub fn clear(&mut self) {
-        drop(self.secret.take());
+        self.secret.zeroize_mem()
     }
 }
 
@@ -99,7 +68,7 @@ impl Default for AdminConfiguration {
     fn default() -> Self {
         Self {
             timestamp: Tai64N::now(),
-            secret: Some(RandomChars::generate()),
+            secret: RandomChars::generate(),
         }
     }
 }

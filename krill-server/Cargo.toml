@@ -21,7 +21,6 @@ async-dup = { workspace = true, optional = true }
 async-lock = { workspace = true, optional = true }
 async-channel = { workspace = true, optional = true }
 async-fs = { workspace = true, optional = true }
-gloo-timers.workspace = true
 wasm-bindgen-futures.workspace = true
 fastrand = { version = "2.3.0", features = ["getrandom", "js"] }
 futures-lite = { version = "2.6.1", optional = true }
@@ -40,15 +39,17 @@ countries-iso3166.workspace = true
 tokio = { version = "1.50.0", default-features = false, optional = true }
 byte_prefix = "1.0.0"
 url.workspace = true
+gloo-timers.workspace = true
+percent-encoding = { version = "2.3.2", features = ["std"] }
 
 [features]
 web = ["dioxus/web", "dep:async-channel"]
 default = []
 server = [
+    "dioxus/server",
     "dep:krill-store",
     "dep:krill-mail",
-    "axum",
-    "dioxus/server",
+    "dep:axum",
     "dep:async-lock",
     "dep:async-fs",
     "dep:async-dup",

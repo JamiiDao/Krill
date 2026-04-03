@@ -9,10 +9,10 @@ use axum::{
     response::{IntoResponse, Redirect},
 };
 use axum_extra::extract::CookieJar;
-use krill_common::{KrillError, KrillResult, ServerConfigurationState};
-use krill_store::{KrillStorage, ServerCookie};
+use krill_common::{AuthTokenDetails, KrillError, KrillResult, ServerConfigurationState};
+use krill_store::KrillStorage;
 
-use crate::RouteUtils;
+use crate::{backend::store, RouteUtils};
 
 pub(crate) static SERVER_APP_STATE: OnceLock<Arc<RwLock<ServerConfigurationState>>> =
     OnceLock::new();
@@ -20,12 +20,9 @@ pub(crate) static SERVER_APP_STATE: OnceLock<Arc<RwLock<ServerConfigurationState
 pub(crate) async fn check_app_state(request: Request, next: Next) -> impl IntoResponse {
     let path = request.uri().path();
 
-    // Load paths like login without auth
     if path.starts_with("/api/supported_languages")
-        || path.starts_with("/login")
-        || path.starts_with("/login-init")
-        || path.starts_with("/logout")
-        || path.starts_with("/api/verification_stream")
+        || path.starts_with(crate::RouteUtils::LOGOUT)
+        || path.starts_with(crate::RouteUtils::ERRORS)
     {
         return next.run(request).await;
     }
@@ -46,27 +43,73 @@ pub(crate) async fn check_app_state(request: Request, next: Next) -> impl IntoRe
 
     let state = match server_state().await {
         Ok(state) => state,
-        Err(_) => return Redirect::temporary(RouteUtils::APP_ERROR).into_response(),
+        Err(error) => return redirect_to_error(error).into_response(),
     };
 
     if state == ServerConfigurationState::Uninitialized {
         // allow configuration page itself
-        if path == RouteUtils::CONFIGURATION {
+        if path == RouteUtils::CONFIGURATION || path.starts_with("/api/verification_stream") {
             return next.run(request).await;
         }
 
         return Redirect::temporary(RouteUtils::CONFIGURATION).into_response();
     }
+
     if state == ServerConfigurationState::LoginInitialization {
-        return Redirect::temporary(RouteUtils::LOGIN_INIT).into_response();
+        if path.starts_with("/verify-support-mail")
+            || path.starts_with("/verification-support-mail-link")
+            || path.starts_with("/api/send_superuser_login_auth_link")
+        {
+            return next.run(request).await;
+        } else {
+            return Redirect::temporary("/verify-support-mail").into_response();
+        }
     }
 
-    // App configured
-    match fetch_cookie(request.headers()).await {
-        Ok(Some(_)) => next.run(request).await,
-        Ok(None) => Redirect::temporary(RouteUtils::LOGIN).into_response(),
-        Err(_) => Redirect::temporary(RouteUtils::APP_ERROR).into_response(),
+    // Paths that should not be run if the server state is initialized
+    if path.starts_with("/api/verification_stream")
+        || path.starts_with("/verification-support-mail-link")
+        || path.starts_with("/api/send_superuser_login_auth_link")
+        || path.starts_with("/verify-support-mail")
+    {
+        return Redirect::temporary(RouteUtils::DASHBOARD).into_response();
     }
+
+    let fetch_cookie_outcome = fetch_cookie(request.headers()).await;
+
+    tracing::info!("fetch_cookie_outcome : {:?}", &fetch_cookie_outcome);
+
+    match fetch_cookie_outcome {
+        Ok(Some(_)) => {
+            if path == RouteUtils::LOGIN {
+                Redirect::temporary(RouteUtils::DASHBOARD).into_response()
+            } else {
+                next.run(request).await
+            }
+        }
+        Ok(None) => {
+            // if the path is LOGIN, let it through
+            if path == RouteUtils::LOGIN {
+                next.run(request).await
+            } else {
+                Redirect::temporary(RouteUtils::LOGIN).into_response()
+            }
+        }
+        Err(error) => redirect_to_error(error).into_response(),
+    }
+}
+
+fn redirect_to_error(error: KrillError) -> Redirect {
+    let error = match error {
+        KrillError::Transmit(error) => error,
+        KrillError::HttpClient(error) => error,
+        KrillError::HttpResponse(error) => error,
+        _ => "Encountered error when fetching cookie details".to_string(),
+    };
+
+    let error_route = crate::RouteUtils::ERRORS.to_string() + "/" + error.as_str();
+
+    Redirect::temporary(&error_route)
 }
 
 pub(crate) async fn load_app_state(store: &KrillStorage) -> KrillResult<ServerConfigurationState> {
@@ -87,36 +130,32 @@ pub async fn server_state() -> KrillResult<ServerConfigurationState> {
     Ok(*state.read().await)
 }
 
-pub(crate) async fn fetch_cookie(headers: &HeaderMap) -> KrillResult<Option<ServerCookie>> {
-    use base64ct::{Base64, Encoding};
+pub(crate) async fn fetch_cookie(headers: &HeaderMap) -> KrillResult<Option<blake3::Hash>> {
+    tracing::info!("RAW COOKIE HEADER: {:?}", headers.get("cookie"));
 
     let jar = CookieJar::from_headers(headers);
 
-    let session_cookie = if let Some(cookie) = jar.get(ServerCookie::IDENTIFIER) {
-        cookie.value()
+    tracing::info!("USER COOKIE JAR{:?}", &jar);
+
+    let session_cookie =
+        if let Some(cookie) = jar.get(AuthTokenDetails::COOKIE_AUTH_TOKEN_IDENTIFIER) {
+            cookie.value()
+        } else {
+            tracing::info!("USER COOKIE MISSING");
+
+            return Ok(Option::None);
+        };
+
+    let cookie_hash = if let Ok(hash) = blake3::Hash::from_hex(session_cookie.trim()) {
+        hash
     } else {
-        return Ok(Option::None);
+        return Ok(None);
     };
 
-    let decoded = match Base64::decode_vec(session_cookie).ok() {
-        None => return Ok(Option::None),
-        Some(value) => value,
-    };
+    let storage = store()?;
 
-    let as_cookie = match bitcode::decode::<ServerCookie>(&decoded).ok() {
-        None => return Ok(Option::None),
-        Some(value) => value,
-    };
-
-    let hash = blake3::Hash::from_bytes(as_cookie.hash);
-
-    let rehashed = ServerCookie::hash(&as_cookie.data);
-
-    let outcome = if hash != rehashed {
-        Option::None
-    } else {
-        Some(as_cookie)
-    };
-
-    Ok(outcome)
+    Ok(storage
+        .get_auth_token(cookie_hash)
+        .await?
+        .map(|_| cookie_hash))
 }

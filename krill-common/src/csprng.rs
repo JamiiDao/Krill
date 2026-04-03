@@ -2,7 +2,7 @@ use rand_chacha::{
     rand_core::{RngCore, SeedableRng},
     ChaCha12Rng,
 };
-use zeroize::Zeroizing;
+use zeroize::{Zeroize, Zeroizing};
 
 pub const ALPHABET: [char; 36] = [
     'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S',
@@ -32,6 +32,10 @@ impl<const N: usize> RandomChars<N> {
 
     pub fn take(self) -> Zeroizing<[char; N]> {
         self.0
+    }
+
+    pub fn zeroize_mem(&mut self) {
+        self.0.zeroize();
     }
 
     pub fn as_string(&self) -> Zeroizing<String> {

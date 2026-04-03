@@ -25,7 +25,6 @@ mod test_smtp_service {
                 .set_reply_to("Support <support@domain.tld>");
             let mailer = mailer
                 .build("smtps://username@domain.tld:password@smtp.domain-for-smtp-provider.tld:465")
-                .await
                 .unwrap();
 
             let my_mail = EmailEnvelopeDetails::new()
