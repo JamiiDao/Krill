@@ -232,6 +232,12 @@ impl ProgressStateToUiRecord {
         Ok(())
     }
 
+    pub fn clear(&self) -> WasmToolkitResult<()> {
+        WINDOW.read().remove_session_storage_item("state")?;
+
+        Ok(())
+    }
+
     pub fn set_language(&mut self, code: BC47LanguageInfo) -> WasmToolkitResult<&mut Self> {
         self.language = code;
 

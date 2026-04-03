@@ -31,8 +31,10 @@ pub(crate) fn init_server_statics() -> KrillResult<()> {
         let store = store()?;
 
         let app_state = crate::backend::state::load_app_state(store).await?;
+        tracing::info!("INIT APP STATE: {:?}", &app_state);
+
         load_server_key(store).await?;
-        load_color_scheme(store).await?;
+        load_org_info(store).await?;
         load_supported_languages(store).await?;
 
         let cmd_print = ConfigPrint::new(100);
@@ -128,8 +130,10 @@ async fn load_server_key(store: &KrillStorage) -> KrillResult<()> {
         .or(Err(KrillError::UnableToSetServerSecret))
 }
 
-async fn load_color_scheme(store: &KrillStorage) -> KrillResult<()> {
+async fn load_org_info(store: &KrillStorage) -> KrillResult<()> {
     let scheme = store.get_org_info_bytes().await?;
+
+    tracing::info!("LOAD ORG INFO: {:?}", store.get_org_info().await?);
 
     SERVER_ORG_INFO
         .set(scheme)

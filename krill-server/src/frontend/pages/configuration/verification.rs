@@ -46,7 +46,9 @@ pub fn Verification() -> Element {
                                 width: "w-[70%] max-w-[500px]".to_string(),
                                 ..Default::default()
                             },
-                            callback: |_| {
+                            callback: move |_| {
+                                state_data.write().clear();
+
                                 navigator().push("/email-verification");
                             },
                         }
