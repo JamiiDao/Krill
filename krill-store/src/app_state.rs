@@ -5,6 +5,28 @@ use crate::KrillStorage;
 impl KrillStorage {
     pub const KEYSPACE_APP_STATE: &str = "AppState";
 
+    pub async fn set_app_state_login_init(&self) -> KrillResult<()> {
+        let keyspace = self.app_state_keyspace();
+
+        self.set_op(
+            keyspace,
+            Self::KEYSPACE_APP_STATE,
+            ServerConfigurationState::LoginInitialization,
+        )
+        .await
+    }
+
+    pub async fn set_app_state_initialized(&self) -> KrillResult<()> {
+        let keyspace = self.app_state_keyspace();
+
+        self.set_op(
+            keyspace,
+            Self::KEYSPACE_APP_STATE,
+            ServerConfigurationState::Initialized,
+        )
+        .await
+    }
+
     pub async fn get_app_state(&self) -> KrillResult<ServerConfigurationState> {
         let keyspace = self.app_state_keyspace();
 

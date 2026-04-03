@@ -242,6 +242,10 @@ impl ConfigVerificationOutcome {
                 .await
                 .clear();
 
+            if let Err(error) = storage.set_app_state_login_init().await {
+                return Ok(ConfigVerificationOutcome::Failure(error.to_string()));
+            }
+
             let server_app_state = SERVER_APP_STATE.get().ok_or(KrillError::Transmit(
                 "Unable to get `SERVER_APP_STATE`!".to_string(),
             ))?;
