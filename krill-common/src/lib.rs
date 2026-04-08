@@ -7,10 +7,8 @@ pub use utils::*;
 mod types;
 pub use types::*;
 
-#[cfg(feature = "languages")]
-mod language;
-#[cfg(feature = "languages")]
-pub use language::*;
+mod mail_verifier;
+pub use mail_verifier::*;
 
 mod app_state;
 pub use app_state::*;
@@ -22,3 +20,9 @@ pub use branding::*;
 mod csprng;
 #[cfg(feature = "random")]
 pub use csprng::*;
+
+mod auth_token;
+pub use auth_token::*;
+
+mod holder;
+pub use holder::*;

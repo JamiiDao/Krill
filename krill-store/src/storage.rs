@@ -8,7 +8,7 @@ use krill_common::{KrillResult, KrillUtils};
 
 pub struct KrillStorage {
     store: Arc<fjall::SingleWriterTxDatabase>,
-    secrets: Arc<SingleWriterTxKeyspace>,
+    auth_tokens: Arc<SingleWriterTxKeyspace>,
     org_info: Arc<SingleWriterTxKeyspace>,
     app_state: Arc<SingleWriterTxKeyspace>,
     languages: Arc<SingleWriterTxKeyspace>,
@@ -29,7 +29,7 @@ impl KrillStorage {
             let db = SingleWriterTxDatabase::builder(path).open()?;
 
             #[allow(clippy::redundant_closure)]
-            let secrets = db.keyspace(Self::KEYSPACE_SERVER_SECRET, || {
+            let auth_tokens = db.keyspace(Self::KEYSPACE_AUTH_TOKENS, || {
                 KeyspaceCreateOptions::default()
             })?;
 
@@ -47,7 +47,7 @@ impl KrillStorage {
 
             Ok(Self {
                 store: Arc::new(db),
-                secrets: Arc::new(secrets),
+                auth_tokens: Arc::new(auth_tokens),
                 org_info: Arc::new(org_info),
                 app_state: Arc::new(app_state),
                 languages: Arc::new(languages),
@@ -82,6 +82,50 @@ impl KrillStorage {
         .await
     }
 
+    pub async fn set_op_many(
+        &self,
+        keyspace: Arc<fjall::SingleWriterTxKeyspace>,
+        kvs: Vec<(String, Vec<u8>)>,
+    ) -> KrillResult<()> {
+        let db = self.db();
+
+        blocking::unblock(move || {
+            let mut tx = db.write_tx();
+
+            for (key, value) in kvs {
+                tx.insert(&keyspace, key, value);
+            }
+
+            tx.commit()?;
+
+            db.persist(PersistMode::SyncAll)?;
+
+            Ok(())
+        })
+        .await
+    }
+
+    pub(crate) async fn set_op_encoded(
+        &self,
+        keyspace: Arc<fjall::SingleWriterTxKeyspace>,
+        key: impl AsRef<str>,
+        value: Vec<u8>,
+    ) -> KrillResult<()> {
+        let db = self.db();
+
+        let key = key.as_ref().to_owned();
+
+        blocking::unblock(move || {
+            // Perform multiple operations atomically
+            keyspace.insert(key, value)?;
+
+            db.persist(PersistMode::SyncAll)?;
+
+            Ok(())
+        })
+        .await
+    }
+
     pub async fn get_op(
         &self,
         keyspace: Arc<fjall::SingleWriterTxKeyspace>,
@@ -93,17 +137,16 @@ impl KrillStorage {
             .await?
             .map(|data| data.to_vec()))
     }
-
-    pub fn secrets_keyspace(&self) -> Arc<SingleWriterTxKeyspace> {
-        self.secrets.clone()
-    }
-
     pub fn org_info_keyspace(&self) -> Arc<SingleWriterTxKeyspace> {
         self.org_info.clone()
     }
 
     pub fn app_state_keyspace(&self) -> Arc<SingleWriterTxKeyspace> {
         self.app_state.clone()
+    }
+
+    pub fn auth_tokens_namespace(&self) -> Arc<SingleWriterTxKeyspace> {
+        self.auth_tokens.clone()
     }
 
     pub fn languages_keyspace(&self) -> Arc<SingleWriterTxKeyspace> {

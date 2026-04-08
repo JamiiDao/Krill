@@ -9,13 +9,15 @@ pub fn Loader(element: Option<Element>, width: Option<String>) -> Element {
     };
 
     rsx! {
-        div {class: "{width} flex flex-col",
+        div { class: "w-full flex flex-col items-center justify-center",
             if let Some(element) = element {
-                div {class:"flex w-full items-center justify-center mt-1",
-                 {element}
+                div { class: "flex flex-col w-full items-center justify-center mt-1",
+                    {element}
                 }
             }
-            div {class:"loader"},
+            div { class: "flex {width} items-center justify-center",
+                div { class: "loader" }
+            }
         }
     }
 }

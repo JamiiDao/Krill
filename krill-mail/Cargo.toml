@@ -21,6 +21,8 @@ lettre = { version = "0.11.19", default-features = false, features = [
     "webpki-roots",
 ] }
 krill-common.workspace = true
+tai64 = { workspace = true }
+bitcode.workspace = true
 
 [dev-dependencies]
 tokio = { version = "1.50.0", features = ["full"] }

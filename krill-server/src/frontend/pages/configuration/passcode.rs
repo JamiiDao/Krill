@@ -133,13 +133,17 @@ fn passcode_input(
                     .unwrap_or(index);
                 autofocus_position += index;
                 if autofocus_position <= 7 {
-                    DOCUMENT
+                    if let Err(error) = DOCUMENT
                         .read()
                         .set_focus_to_html_element(
                             &(String::from("passcode-")
                                 + autofocus_position.to_string().as_str()),
                         )
-                        .unwrap();
+                    {
+                        spawn(async move {
+                            NOTIFICATION_MANAGER.send_final_error(error).await;
+                        });
+                    }
                 }
                 if !passcode.read().iter().any(|value| value == &PLACEHOLDER) {
                     *disabled.write() = true;

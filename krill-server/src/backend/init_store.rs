@@ -2,17 +2,20 @@ use std::sync::OnceLock;
 
 use async_dup::Arc;
 use async_lock::RwLock;
-use krill_common::{AdminConfiguration, KrillError, KrillResult, ServerConfigurationState};
-use krill_mail::KrillSmtps;
+use krill_common::{
+    AdminConfiguration, KrillError, KrillResult, OrganizationInfo, ServerConfigurationState,
+};
+use krill_mail::{KrillSmtps, KrillSmtpsBuilder};
 use krill_store::KrillStorage;
 use yansi::Paint;
 
-pub static SERVER_KEY: OnceLock<[u8; 32]> = OnceLock::new();
 pub static KRILL_STORAGE: OnceLock<KrillStorage> = OnceLock::new();
-pub static SERVER_ORG_INFO: OnceLock<Vec<u8>> = OnceLock::new();
 pub static SUPPORTED_LANGUAGES: OnceLock<Vec<String>> = OnceLock::new();
 pub(crate) static ADMIN_SECRET: OnceLock<Arc<RwLock<AdminConfiguration>>> = OnceLock::new();
 pub(crate) static SERVER_MAIL_CONNECTION: OnceLock<KrillSmtps> = OnceLock::new();
+pub(crate) static SERVER_ORG_INFO: OnceLock<OrganizationInfo> = OnceLock::new();
+pub(crate) static SERVER_API_KEY: OnceLock<String> = OnceLock::new();
+pub(crate) static SERVER_DOMAIN_NAME: OnceLock<String> = OnceLock::new();
 
 pub fn store() -> KrillResult<&'static KrillStorage> {
     KRILL_STORAGE
@@ -31,10 +34,7 @@ pub(crate) fn init_server_statics() -> KrillResult<()> {
         let store = store()?;
 
         let app_state = crate::backend::state::load_app_state(store).await?;
-        tracing::info!("INIT APP STATE: {:?}", &app_state);
 
-        load_server_key(store).await?;
-        load_org_info(store).await?;
         load_supported_languages(store).await?;
 
         let cmd_print = ConfigPrint::new(100);
@@ -44,8 +44,6 @@ pub(crate) fn init_server_statics() -> KrillResult<()> {
             use yansi::Paint;
 
             let secret = AdminConfiguration::new();
-
-            tracing::info!("NEW ADMIN SECRET CREATED");
 
             ADMIN_SECRET
                 .set(Arc::new(RwLock::new(secret)))
@@ -61,7 +59,6 @@ pub(crate) fn init_server_statics() -> KrillResult<()> {
                     .read()
                     .await
                     .secret()
-                    .expect("Admin secret not generated!!!!")
                     .as_string_passcode()
                     .as_str())
                 .red()
@@ -116,28 +113,44 @@ pub(crate) fn init_server_statics() -> KrillResult<()> {
             }
 
             println!("\n\n\n");
+        } else {
+            let org_info = store.get_org_info().await?;
+            let org_name = org_info.name.clone();
+            let support_mail = org_info.support_mail.clone();
+            let domain = store.get_fqdn().await?.ok_or(KrillError::Store(
+                "Domain Name is not set yet the organization is initialized".to_string(),
+            ))?;
+
+            SERVER_ORG_INFO
+                .set(org_info)
+                .or(Err(KrillError::UnableToGetOrganizationInfo))?;
+
+            SERVER_DOMAIN_NAME
+                .set(domain.clone())
+                .or(Err(KrillError::Statics(
+                    "Unable to initialized the domain name static",
+                )))?;
+
+            let smtps_uri = store.get_smtps_uri().await?.ok_or(KrillError::Smtps(vec![
+                "SMTPs not set yet server state is not uninitialized".to_string(),
+            ]))?;
+
+            let mut mail_info = KrillSmtpsBuilder::new();
+            mail_info
+                .set_from(&format!("{} <{}>", org_name, support_mail))
+                .set_hello_name(&domain)
+                .set_reply_to(&format!("{} <{}>", org_name, support_mail));
+            let mailer = mail_info.build(&smtps_uri).unwrap();
+
+            SERVER_MAIL_CONNECTION
+                .set(mailer)
+                .or(Err(KrillError::Statics(
+                    "Unable to set `SERVER_MAIL_CONNECTION`",
+                )))?;
         }
 
         Ok(())
     })
-}
-
-async fn load_server_key(store: &KrillStorage) -> KrillResult<()> {
-    let secret = store.get_server_secret().await?;
-
-    SERVER_KEY
-        .set(secret)
-        .or(Err(KrillError::UnableToSetServerSecret))
-}
-
-async fn load_org_info(store: &KrillStorage) -> KrillResult<()> {
-    let scheme = store.get_org_info_bytes().await?;
-
-    tracing::info!("LOAD ORG INFO: {:?}", store.get_org_info().await?);
-
-    SERVER_ORG_INFO
-        .set(scheme)
-        .or(Err(KrillError::UnableToGetColorScheme))
 }
 
 async fn load_supported_languages(store: &KrillStorage) -> KrillResult<()> {
