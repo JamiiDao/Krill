@@ -1,101 +1,60 @@
-use fjall::PersistMode;
+use bitcode::{Decode, Encode};
 use krill_common::{AuthTokenDetails, Holder, KrillError, KrillResult, ServerConfigurationState};
 
 use crate::KrillStorage;
 
+pub type AuthTokenType = [u8; AuthTokenDetails::AUTH_TOKEN_LEN];
+
 impl KrillStorage {
     pub(crate) const KEYSPACE_AUTH_TOKENS: &str = "AuthTokens";
-
-    pub async fn set_app_init_and_cookies(
-        &self,
-        auth_token: blake3::Hash,
-    ) -> KrillResult<AuthTokenDetails> {
-        let db = self.db();
-
-        let app_state_keyspace = self.app_state_keyspace();
-
-        let org_info = self.get_org_info().await?;
-        let auth_tokens_keyspace = self.auth_tokens_namespace();
-
-        let holder = Holder::new_with_tld(&org_info.support_mail)?
-            .set_superuser()
-            .set_user_display(&org_info.name);
-
-        let auth_token_details = AuthTokenDetails::new(holder);
-        let auth_token_details_bytes = bitcode::encode(&auth_token_details);
-
-        blocking::unblock(move || {
-            let mut tx = db.write_tx();
-
-            tx.insert(
-                &app_state_keyspace,
-                Self::KEYSPACE_APP_STATE,
-                bitcode::encode(&ServerConfigurationState::Initialized),
-            );
-
-            tx.insert(
-                &auth_tokens_keyspace,
-                auth_token.to_string(),
-                auth_token_details_bytes,
-            );
-
-            tx.commit()?;
-
-            db.persist(PersistMode::SyncAll)?;
-
-            Ok::<(), KrillError>(())
-        })
-        .await?;
-
-        Ok(auth_token_details)
-    }
+    const KEY_SUPERUSER_AUTH_TOKENS: &str = "SuperuserAuthTokens";
 
     pub async fn set_auth_token(
         &self,
-        token: blake3::Hash,
-        details: &AuthTokenDetails,
-    ) -> KrillResult<()> {
+        token: [u8; AuthTokenDetails::BYTE_32_LEN],
+        details: AuthTokenDetails,
+    ) -> KrillResult<[u8; AuthTokenDetails::AUTH_TOKEN_LEN]> {
         let keyspace = self.auth_tokens_namespace();
 
-        let db = self.db();
-        let value = bitcode::encode(details);
+        let auth_token_key = details.store_key(token);
 
-        blocking::unblock(move || {
-            // Perform multiple operations atomically
-            keyspace.insert(token.to_string(), value)?;
-
-            db.persist(PersistMode::SyncAll)?;
-
-            Ok(())
-        })
-        .await
+        self.set(keyspace, auth_token_key, details)
+            .await
+            .map(|_| auth_token_key)
     }
 
-    pub async fn remove_auth_token(&self, token: blake3::Hash) -> KrillResult<()> {
+    pub async fn set_auth_token_with_store_key(
+        &self,
+        auth_token_key: [u8; AuthTokenDetails::AUTH_TOKEN_LEN],
+        details: AuthTokenDetails,
+    ) -> KrillResult<[u8; AuthTokenDetails::AUTH_TOKEN_LEN]> {
         let keyspace = self.auth_tokens_namespace();
 
-        let db = self.db();
+        self.set(keyspace, auth_token_key, details)
+            .await
+            .map(|_| auth_token_key)
+    }
 
-        blocking::unblock(move || {
-            // Perform multiple operations atomically
-            keyspace.remove(token.to_string())?;
+    pub async fn remove_auth_token(&self, token: AuthTokenType) -> KrillResult<()> {
+        let keyspace = self.auth_tokens_namespace();
+        self.remove(keyspace, token).await
+    }
 
-            db.persist(PersistMode::SyncAll)?;
+    pub async fn remove_superuser_auth_token(&self) -> KrillResult<()> {
+        let keyspace = self.auth_tokens_namespace();
 
-            Ok(())
-        })
-        .await
+        self.remove(keyspace, Self::KEY_SUPERUSER_AUTH_TOKENS).await
     }
 
     /// Removes auth token if expired
     pub async fn get_auth_token(
         &self,
-        token: blake3::Hash,
+        token: AuthTokenType,
     ) -> KrillResult<Option<AuthTokenDetails>> {
         let keyspace = self.auth_tokens_namespace();
 
         let auth_token = self
-            .get_op(keyspace, token.to_string())
+            .get(keyspace, token)
             .await?
             .map(|token_bytes| {
                 bitcode::decode::<AuthTokenDetails>(&token_bytes).or(Err(KrillError::Store(
@@ -109,9 +68,73 @@ impl KrillStorage {
                 self.remove_auth_token(token).await?;
             }
 
-            Ok(auth_token)
-        } else {
-            Ok(None)
+            return Ok(auth_token);
         }
+
+        Ok(None)
     }
+
+    pub async fn set_superuser_token(&self, holder: Holder) -> KrillResult<SuperuserAuthToken> {
+        let app_state_keyspace = self.app_state_keyspace();
+        let auth_tokens_keyspace = self.auth_tokens_namespace();
+
+        let auth_token_details = AuthTokenDetails::new(holder);
+        let auth_token: AuthTokenType =
+            auth_token_details.store_key(AuthTokenDetails::generate_token());
+        let token_outcome = SuperuserAuthToken {
+            details: auth_token_details,
+            token: auth_token,
+        };
+
+        self.set_many_with_keyspaces_and_encoded(vec![
+            (
+                app_state_keyspace,
+                Self::KEYSPACE_APP_STATE,
+                bitcode::encode(&ServerConfigurationState::Initialized),
+            ),
+            (
+                auth_tokens_keyspace,
+                Self::KEY_SUPERUSER_AUTH_TOKENS,
+                bitcode::encode(&token_outcome),
+            ),
+        ])
+        .await?;
+
+        Ok(token_outcome)
+    }
+
+    /// Removes auth token if expired
+    pub async fn get_superuser_auth_token(&self) -> KrillResult<Option<SuperuserAuthToken>> {
+        let auth_tokens_keyspace = self.auth_tokens_namespace();
+
+        let auth_token = self
+            .get(auth_tokens_keyspace, Self::KEY_SUPERUSER_AUTH_TOKENS)
+            .await?
+            .map(|token_bytes| {
+                bitcode::decode::<SuperuserAuthToken>(&token_bytes).or(Err(KrillError::Store(
+                    "Auth Token bytes corrupted".to_string(),
+                )))
+            })
+            .transpose()?;
+
+        if let Some(auth_token_exists) = auth_token.as_ref() {
+            let checked = if auth_token_exists.details.is_expired() {
+                self.remove_superuser_auth_token().await?;
+
+                None
+            } else {
+                auth_token
+            };
+
+            return Ok(checked);
+        }
+
+        Ok(None)
+    }
+}
+
+#[derive(Debug, Clone, Encode, Decode)]
+pub struct SuperuserAuthToken {
+    pub details: AuthTokenDetails,
+    pub token: AuthTokenType,
 }

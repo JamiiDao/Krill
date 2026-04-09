@@ -4,10 +4,10 @@ use bitcode::{Decode, Encode};
 use tai64::Tai64N;
 
 #[cfg(feature = "random")]
-use crate::{Holder, RandomBytes};
-
-#[cfg(feature = "random")]
-use core::fmt;
+use {
+    crate::{Holder, KrillError, KrillResult, RandomBytes},
+    core::fmt,
+};
 
 #[cfg(feature = "random")]
 #[derive(Hash, PartialEq, Eq, PartialOrd, Ord, Clone, Encode, Decode)]
@@ -19,32 +19,13 @@ pub struct AuthTokenDetails {
 }
 
 #[cfg(feature = "random")]
-impl fmt::Debug for AuthTokenDetails {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("AuthTokenDetails")
-            .field("holder", &self.holder)
-            .field("timestamp", &self.timestamp_formatted())
-            .field("expiry", &humantime::format_duration(self.expiry()))
-            .field("retry", &humantime::format_duration(self.retry()))
-            .finish()
-    }
-}
-
-#[cfg(feature = "random")]
-impl fmt::Display for AuthTokenDetails {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("AuthTokenDetails")
-            .field("holder", &self.holder.to_string())
-            .field("timestamp", &self.timestamp_formatted())
-            .field("expiry", &humantime::format_duration(self.expiry()))
-            .field("retry", &humantime::format_duration(self.retry()))
-            .finish()
-    }
-}
-
-#[cfg(feature = "random")]
 impl AuthTokenDetails {
     pub const COOKIE_AUTH_TOKEN_IDENTIFIER: &str = "auth-token";
+
+    pub const BYTE_32_LEN: usize = 32;
+
+    pub const AUTH_TOKEN_LEN: usize = Tai64N::BYTE_SIZE + Self::BYTE_32_LEN;
+    pub const AUTH_TOKEN_BUFFER: [u8; Self::AUTH_TOKEN_LEN] = [0u8; Self::AUTH_TOKEN_LEN];
 
     pub fn new(holder: Holder) -> Self {
         let now = Tai64N::now();
@@ -56,13 +37,30 @@ impl AuthTokenDetails {
         }
     }
 
-    pub fn store_key(&self, token: &blake3::Hash) -> [u8; Tai64N::BYTE_SIZE + blake3::KEY_LEN] {
-        let mut buffer = [0u8; Tai64N::BYTE_SIZE + blake3::KEY_LEN];
+    pub fn store_key(&self, token: [u8; Self::BYTE_32_LEN]) -> [u8; Self::AUTH_TOKEN_LEN] {
+        let mut buffer = Self::AUTH_TOKEN_BUFFER;
 
         buffer[0..Tai64N::BYTE_SIZE].copy_from_slice(&self.expiry_as_timestamp().to_bytes());
-        buffer[Tai64N::BYTE_SIZE..].copy_from_slice(token.as_bytes());
+        buffer[Tai64N::BYTE_SIZE..].copy_from_slice(&token);
 
         buffer
+    }
+
+    pub fn store_key_hex(&self, token: [u8; Self::BYTE_32_LEN]) -> String {
+        faster_hex::hex_string_upper(&self.store_key(token))
+    }
+
+    pub fn store_key_bytes_to_hex(token: [u8; Self::AUTH_TOKEN_LEN]) -> String {
+        faster_hex::hex_string_upper(&token)
+    }
+
+    pub fn decode_token(token: &str) -> KrillResult<[u8; Self::AUTH_TOKEN_LEN]> {
+        let mut buffer = Self::AUTH_TOKEN_BUFFER;
+
+        faster_hex::hex_decode(token.as_bytes(), &mut buffer)
+            .or(Err(KrillError::InvalidAuthToken))?;
+
+        Ok(buffer)
     }
 
     pub fn holder(&self) -> &Holder {
@@ -112,8 +110,8 @@ impl AuthTokenDetails {
         self.retry
     }
 
-    pub fn generate_token() -> blake3::Hash {
-        RandomBytes::<32>::generate().hash()
+    pub fn generate_token() -> [u8; Self::BYTE_32_LEN] {
+        *RandomBytes::<32>::generate().take()
     }
 
     pub fn can_resend(&self) -> bool {
@@ -134,11 +132,11 @@ impl AuthTokenDetails {
         Tai64N::now() > expiry
     }
 
-    pub fn auth_token_as_cookie(&self, cookie_auth_token: &blake3::Hash) -> String {
+    pub fn auth_token_as_cookie(&self, cookie_auth_token: [u8; Self::BYTE_32_LEN]) -> String {
         format!(
             "{}={}; Path=/; HttpOnly;{} SameSite=Strict; Max-Age={}",
             Self::COOKIE_AUTH_TOKEN_IDENTIFIER,
-            cookie_auth_token,
+            self.store_key_hex(cookie_auth_token),
             if cfg!(not(debug_assertions)) {
                 " Secure;"
             } else {
@@ -146,5 +144,63 @@ impl AuthTokenDetails {
             },
             self.expiry.as_secs()
         )
+    }
+
+    pub fn auth_token_as_cookie_raw(
+        &self,
+        cookie_auth_token: [u8; Self::AUTH_TOKEN_LEN],
+    ) -> String {
+        format!(
+            "{}={}; Path=/; HttpOnly;{} SameSite=Strict; Max-Age={}",
+            Self::COOKIE_AUTH_TOKEN_IDENTIFIER,
+            Self::store_key_bytes_to_hex(cookie_auth_token),
+            if cfg!(not(debug_assertions)) {
+                " Secure;"
+            } else {
+                ""
+            },
+            self.expiry.as_secs()
+        )
+    }
+
+    pub fn const_cmp(
+        current: [u8; Self::AUTH_TOKEN_LEN],
+        other: &[u8; Self::AUTH_TOKEN_LEN],
+    ) -> bool {
+        use subtle::ConstantTimeEq;
+
+        current.ct_eq(other).into()
+    }
+
+    pub fn extract_32_byte_token(
+        token: [u8; Self::AUTH_TOKEN_LEN],
+    ) -> KrillResult<[u8; Self::BYTE_32_LEN]> {
+        token[0..Self::BYTE_32_LEN]
+            .try_into()
+            .or(Err(KrillError::InvalidAuthToken))
+    }
+}
+
+#[cfg(feature = "random")]
+impl fmt::Debug for AuthTokenDetails {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AuthTokenDetails")
+            .field("holder", &self.holder)
+            .field("timestamp", &self.timestamp_formatted())
+            .field("expiry", &humantime::format_duration(self.expiry()))
+            .field("retry", &humantime::format_duration(self.retry()))
+            .finish()
+    }
+}
+
+#[cfg(feature = "random")]
+impl fmt::Display for AuthTokenDetails {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AuthTokenDetails")
+            .field("holder", &self.holder.to_string())
+            .field("timestamp", &self.timestamp_formatted())
+            .field("expiry", &humantime::format_duration(self.expiry()))
+            .field("retry", &humantime::format_duration(self.retry()))
+            .finish()
     }
 }

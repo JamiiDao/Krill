@@ -10,12 +10,21 @@ use krill_store::KrillStorage;
 use yansi::Paint;
 
 pub static KRILL_STORAGE: OnceLock<KrillStorage> = OnceLock::new();
-pub static SUPPORTED_LANGUAGES: OnceLock<Vec<String>> = OnceLock::new();
 pub(crate) static ADMIN_SECRET: OnceLock<Arc<RwLock<AdminConfiguration>>> = OnceLock::new();
 pub(crate) static SERVER_MAIL_CONNECTION: OnceLock<KrillSmtps> = OnceLock::new();
 pub(crate) static SERVER_ORG_INFO: OnceLock<OrganizationInfo> = OnceLock::new();
 pub(crate) static SERVER_API_KEY: OnceLock<String> = OnceLock::new();
 pub(crate) static SERVER_DOMAIN_NAME: OnceLock<String> = OnceLock::new();
+
+pub fn default_langs() -> Vec<String> {
+    [
+        "en-US", "sw", "zh-Hans", "fr", "es", "pt-BR", "ar", "ru", "ja-JP", "de", "ko", "it",
+        "vi-VN", "fa", "ur", "id", "tr", "uk", "hi",
+    ]
+    .iter()
+    .map(|value| value.to_string())
+    .collect()
+}
 
 pub fn store() -> KrillResult<&'static KrillStorage> {
     KRILL_STORAGE
@@ -34,8 +43,6 @@ pub(crate) fn init_server_statics() -> KrillResult<()> {
         let store = store()?;
 
         let app_state = crate::backend::state::load_app_state(store).await?;
-
-        load_supported_languages(store).await?;
 
         let cmd_print = ConfigPrint::new(100);
 
@@ -151,14 +158,6 @@ pub(crate) fn init_server_statics() -> KrillResult<()> {
 
         Ok(())
     })
-}
-
-async fn load_supported_languages(store: &KrillStorage) -> KrillResult<()> {
-    let langs = store.get_supported_languages().await?;
-
-    SUPPORTED_LANGUAGES
-        .set(langs)
-        .or(Err(KrillError::UnableToGetSupportedLanguages))
 }
 
 #[derive(Debug, Clone, Copy)]

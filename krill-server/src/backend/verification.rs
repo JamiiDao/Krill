@@ -8,11 +8,8 @@ use crate::ProgressStateToUiRecord;
 
 #[cfg(feature = "server")]
 use {
-    dioxus::fullstack::{
-        headers::Header,
-        {Cookie, TypedHeader},
-    },
-    krill_common::{AuthTokenDetails, Holder, RandomBytes, ServerConfigurationState},
+    dioxus::fullstack::headers::Header,
+    krill_common::{AuthTokenDetails, Holder, ServerConfigurationState},
     krill_mail::{EmailEnvelopeDetails, KrillSmtpsBuilder},
     solana_tx_parser::{JsonRpcCluster, SolanaTxParserUtils},
 };
@@ -115,8 +112,10 @@ pub async fn verification_stream(
     ))
 }
 
-#[get("/verification-support-mail-link/{code}")]
-pub async fn verify_support_mail(code: String) -> ServerFnResult<Response> {
+#[get("/verification-support-mail-link/{token}")]
+pub async fn verify_support_mail(token: String) -> ServerFnResult<Response> {
+    tracing::info!("TOKEN URL RECEIVED: {:?}", &token);
+
     let mut res = Response::new(axum::body::Body::empty());
 
     let storage = store().map_err(|error| ServerFnError::ServerError {
@@ -125,11 +124,15 @@ pub async fn verify_support_mail(code: String) -> ServerFnResult<Response> {
         details: None,
     })?;
 
-    let hash = ServerUtils::to_hash(&code)?;
+    let parsed_token = ServerUtils::parse_token(&token)?;
+    tracing::info!(
+        "PARSED VERIFICATION TOKEN: {:?}",
+        AuthTokenDetails::store_key_bytes_to_hex(parsed_token)
+    );
 
     let login_init_details =
         storage
-            .get_auth_token(hash)
+            .get_superuser_auth_token()
             .await
             .map_err(|error| ServerFnError::ServerError {
                 message: error.to_string(),
@@ -138,6 +141,10 @@ pub async fn verify_support_mail(code: String) -> ServerFnResult<Response> {
             })?;
 
     let auth_details = if let Some(auth_details) = login_init_details {
+        tracing::info!(
+            "FETCHED VERIFICATION TOKEN: {:?}",
+            AuthTokenDetails::store_key_bytes_to_hex(auth_details.token)
+        );
         auth_details
     } else {
         redirect_error_header(
@@ -148,19 +155,23 @@ pub async fn verify_support_mail(code: String) -> ServerFnResult<Response> {
         return Ok(res);
     };
 
-    if auth_details.is_expired() {
-        redirect_error_header(&mut res, "The link is already expired!")?;
-
-        return Ok(res);
-    }
-
-    if auth_details.holder().role() != UserRole::Superuser {
+    if !AuthTokenDetails::const_cmp(auth_details.token, &parsed_token) {
         redirect_error_header(&mut res, "Unauthorized user")?;
 
         return Ok(res);
     }
 
-    let token = RandomBytes::<32>::generate().hash();
+    if auth_details.details.is_expired() {
+        redirect_error_header(&mut res, "The link is already expired!")?;
+
+        return Ok(res);
+    }
+
+    if auth_details.details.holder().role() != UserRole::Superuser {
+        redirect_error_header(&mut res, "Unauthorized user")?;
+
+        return Ok(res);
+    }
 
     let state = SERVER_APP_STATE.get().ok_or(ServerFnError::ServerError {
         message: "Unable to transition the state of the server `SERVER_APP_STATE`".to_string(),
@@ -168,8 +179,10 @@ pub async fn verify_support_mail(code: String) -> ServerFnResult<Response> {
         details: None,
     })?;
 
-    let auth_token_details = storage
-        .set_app_init_and_cookies(token)
+    let auth_token = AuthTokenDetails::generate_token();
+
+    let store_key = storage
+        .set_auth_token(auth_token, auth_details.details.clone())
         .await
         .map_err(|error| ServerFnError::ServerError {
             message: error.to_string(),
@@ -180,15 +193,16 @@ pub async fn verify_support_mail(code: String) -> ServerFnResult<Response> {
     *state.write().await = ServerConfigurationState::Initialized;
 
     redirect_success_header(&mut res)?;
-    build_cookie(&mut res, &auth_token_details.auth_token_as_cookie(&hash))?;
+    build_cookie(
+        &mut res,
+        &auth_details.details.auth_token_as_cookie_raw(store_key),
+    )?;
 
     Ok(res)
 }
 
-#[server(header: TypedHeader<Cookie>)]
+#[server]
 pub async fn send_superuser_login_auth_link() -> ServerFnResult<Vec<u8>> {
-    let cookie = header.get(AuthTokenDetails::COOKIE_AUTH_TOKEN_IDENTIFIER);
-
     let org_info = ServerUtils::request_get_org()?;
 
     let holder = Holder::new_with_tld(&org_info.support_mail)
@@ -207,7 +221,6 @@ pub async fn send_superuser_login_auth_link() -> ServerFnResult<Vec<u8>> {
 
     send_auth_email_processor(
         holder,
-        cookie,
         "Verify that you control this email address",
         "Click or Tap the link below to verify that you control the support email address",
     )
@@ -678,7 +691,6 @@ fn redirect_success_header(res: &mut Response) -> ServerFnResult<()> {
 #[cfg(feature = "server")]
 async fn send_auth_email_processor(
     holder: Holder,
-    auth_token: Option<&str>,
     subject: &str,
     body: &str,
 ) -> KrillResult<VerifyMailDetailsToUi> {
@@ -686,20 +698,16 @@ async fn send_auth_email_processor(
         .get()
         .ok_or(KrillError::Statics("`SERVER_DOMAIN_NAME` not set"))?;
 
-    let auth_token = if let Some(hash) = auth_token.as_ref() {
-        blake3::Hash::from_hex(hash).or(Err(KrillError::InvalidCookieAuthToken))?
-    } else {
-        AuthTokenDetails::generate_token()
-    };
-
     let storage = store()?;
 
     let new_issue: bool;
+    let mut auth_token = [0u8; AuthTokenDetails::AUTH_TOKEN_LEN];
 
-    let auth_details = if let Some(auth_details) = storage.get_auth_token(auth_token).await? {
+    let auth_details = if let Some(auth_details) = storage.get_superuser_auth_token().await? {
         new_issue = false;
 
-        auth_details
+        auth_token = auth_details.token;
+        auth_details.details
     } else {
         new_issue = true;
 
@@ -707,7 +715,8 @@ async fn send_auth_email_processor(
     };
 
     if new_issue || auth_details.can_resend() {
-        storage.set_auth_token(auth_token, &auth_details).await?;
+        let superuser_auth_token = storage.set_superuser_token(holder.clone()).await?;
+        auth_token = superuser_auth_token.token;
 
         let mailer = SERVER_MAIL_CONNECTION
             .get()
@@ -718,14 +727,14 @@ async fn send_auth_email_processor(
             .set_subject(subject)
             .set_body(&html_code_template(
                 domain,
-                &auth_token.to_string(),
+                &AuthTokenDetails::store_key_bytes_to_hex(auth_token),
                 body,
                 &auth_details.expiry_formatted(),
             ));
 
         mailer.send(&message).await?;
 
-        Ok((auth_token, auth_details).into())
+        Ok((auth_token, superuser_auth_token.details).into())
     } else {
         Ok((auth_token, auth_details).into())
     }

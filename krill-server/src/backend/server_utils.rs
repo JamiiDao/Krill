@@ -1,7 +1,7 @@
 use {
     crate::backend::SERVER_ORG_INFO,
     dioxus::server::{ServerFnError, ServerFnResult},
-    krill_common::{KrillError, OrganizationInfo},
+    krill_common::{AuthTokenDetails, KrillError, OrganizationInfo},
 };
 
 pub struct ServerUtils;
@@ -24,11 +24,11 @@ impl ServerUtils {
             })
     }
 
-    pub fn to_hash(value: &str) -> ServerFnResult<blake3::Hash> {
-        blake3::Hash::from_hex(&value).or(Err(ServerFnError::ServerError {
-            message: "The auth token is invalid".to_string(),
+    pub fn parse_token(token: &str) -> ServerFnResult<[u8; AuthTokenDetails::AUTH_TOKEN_LEN]> {
+        AuthTokenDetails::decode_token(token).map_err(|error| ServerFnError::ServerError {
+            message: error.to_string(),
             code: 400,
             details: None,
-        }))
+        })
     }
 }

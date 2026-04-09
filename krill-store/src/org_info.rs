@@ -34,13 +34,13 @@ impl KrillStorage {
             bitcode::encode(&api_key),
         ));
 
-        self.set_op_many(keyspace, kvs).await
+        self.set_many_encoded(keyspace, kvs).await
     }
 
     pub async fn set_org_info(&self, org_info: OrganizationInfo) -> KrillResult<()> {
         let keyspace = self.org_info_keyspace();
 
-        self.set_op(keyspace, Self::ORG_INFO_KEY, org_info).await
+        self.set(keyspace, Self::ORG_INFO_KEY, org_info).await
     }
 
     pub async fn update_org_info(&self, org_info: OrganizationInfo) -> KrillResult<()> {
@@ -48,10 +48,12 @@ impl KrillStorage {
         let org_info_exists = self.get_org_info().await?;
 
         if !org_info_exists.name.is_empty() {
-            return Err(KrillError::Store("Organization Already exists".to_string()));
+            return Err(KrillError::Store(
+                "Organization Not Found exists".to_string(),
+            ));
         }
 
-        self.set_op(keyspace, Self::ORG_INFO_KEY, org_info).await
+        self.set(keyspace, Self::ORG_INFO_KEY, org_info).await
     }
 
     pub async fn get_org_info(&self) -> KrillResult<OrganizationInfo> {
@@ -63,7 +65,7 @@ impl KrillStorage {
     pub async fn get_org_info_bytes(&self) -> KrillResult<Vec<u8>> {
         let keyspace = self.org_info_keyspace();
 
-        match self.get_op(keyspace, Self::ORG_INFO_KEY).await? {
+        match self.get(keyspace, Self::ORG_INFO_KEY).await? {
             Some(bytes) => Ok(bytes),
             None => {
                 let info = OrganizationInfo::default();
@@ -78,13 +80,13 @@ impl KrillStorage {
     pub async fn set_smtps_uri(&self, smtps_uri: &str) -> KrillResult<()> {
         let keyspace = self.org_info_keyspace();
 
-        self.set_op(keyspace, Self::SMTPS_KEY, smtps_uri).await
+        self.set(keyspace, Self::SMTPS_KEY, smtps_uri).await
     }
 
     pub async fn get_smtps_uri(&self) -> KrillResult<Option<String>> {
         let keyspace = self.org_info_keyspace();
 
-        let bytes = self.get_op(keyspace, Self::SMTPS_KEY).await?;
+        let bytes = self.get(keyspace, Self::SMTPS_KEY).await?;
 
         bytes
             .map(|bytes| bitcode::decode::<String>(&bytes).or(Err(KrillError::UnableToDecodeSmtps)))
@@ -94,14 +96,13 @@ impl KrillStorage {
     pub async fn set_solana_api_key(&self, api_key: &str) -> KrillResult<()> {
         let keyspace = self.org_info_keyspace();
 
-        self.set_op(keyspace, Self::SOLANA_API_KEY_INFO, api_key)
-            .await
+        self.set(keyspace, Self::SOLANA_API_KEY_INFO, api_key).await
     }
 
     pub async fn get_solana_api_key(&self) -> KrillResult<Option<String>> {
         let keyspace = self.org_info_keyspace();
 
-        let bytes = self.get_op(keyspace, Self::SOLANA_API_KEY_INFO).await?;
+        let bytes = self.get(keyspace, Self::SOLANA_API_KEY_INFO).await?;
 
         bytes
             .map(|bytes| {
@@ -113,13 +114,13 @@ impl KrillStorage {
     pub async fn set_fqdn(&self, fqdn: &str) -> KrillResult<()> {
         let keyspace = self.org_info_keyspace();
 
-        self.set_op(keyspace, Self::ORG_DOMAIN_NAME, fqdn).await
+        self.set(keyspace, Self::ORG_DOMAIN_NAME, fqdn).await
     }
 
     pub async fn get_fqdn(&self) -> KrillResult<Option<String>> {
         let keyspace = self.org_info_keyspace();
 
-        let bytes = self.get_op(keyspace, Self::ORG_DOMAIN_NAME).await?;
+        let bytes = self.get(keyspace, Self::ORG_DOMAIN_NAME).await?;
 
         bytes
             .map(|bytes| {
