@@ -131,7 +131,7 @@ pub fn VerifySupportMail() -> Element {
                 LoadingLanguageTranslation {}
             } else {
                 div { class: "flex flex-col w-full items-center justify-center",
-                    div { class: "flex max-w-[200px] lg:max-w-[400px]",
+                    div { class: "flex max-w-[200px] lg:max-w-[300px]",
                         img { src: krill_logo, alt: "Shield Logo" }
                     }
                     div { class: "text-4xl font-[headingfont] dark:text-[var(--primary-color)] font-black",

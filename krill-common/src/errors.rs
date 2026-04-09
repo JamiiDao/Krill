@@ -320,8 +320,8 @@ pub enum KrillError {
     Statics(&'static str),
     #[error("{0:?}")]
     Smtps(Vec<String>),
-    #[error("The cookie from the user was invalid")]
-    InvalidCookieAuthToken,
+    #[error("The auth token is invalid")]
+    InvalidAuthToken,
 }
 
 #[cfg(feature = "storage")]

@@ -104,7 +104,11 @@ fn redirect_to_error(error: KrillError) -> Redirect {
         KrillError::Transmit(error) => error,
         KrillError::HttpClient(error) => error,
         KrillError::HttpResponse(error) => error,
-        _ => "Encountered error when fetching cookie details".to_string(),
+        _ => {
+            tracing::error!("{:?}", error);
+
+            "Encountered fatal error".to_string()
+        }
     };
 
     let error_route = crate::RouteUtils::ERRORS.to_string() + "/" + error.as_str();
@@ -130,7 +134,9 @@ pub async fn server_state() -> KrillResult<ServerConfigurationState> {
     Ok(*state.read().await)
 }
 
-pub(crate) async fn fetch_cookie(headers: &HeaderMap) -> KrillResult<Option<blake3::Hash>> {
+pub(crate) async fn fetch_cookie(
+    headers: &HeaderMap,
+) -> KrillResult<Option<[u8; AuthTokenDetails::AUTH_TOKEN_LEN]>> {
     let jar = CookieJar::from_headers(headers);
 
     let session_cookie =
@@ -140,11 +146,12 @@ pub(crate) async fn fetch_cookie(headers: &HeaderMap) -> KrillResult<Option<blak
             return Ok(Option::None);
         };
 
-    let cookie_hash = if let Ok(hash) = blake3::Hash::from_hex(session_cookie.trim()) {
-        hash
-    } else {
-        return Ok(None);
-    };
+    let cookie_hash: [u8; AuthTokenDetails::AUTH_TOKEN_LEN] =
+        if let Ok(hash) = AuthTokenDetails::decode_token(session_cookie.trim()) {
+            hash
+        } else {
+            return Ok(None);
+        };
 
     let storage = store()?;
 

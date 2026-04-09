@@ -8,7 +8,7 @@ impl KrillStorage {
     pub async fn set_app_state_login_init(&self) -> KrillResult<()> {
         let keyspace = self.app_state_keyspace();
 
-        self.set_op(
+        self.set(
             keyspace,
             Self::KEYSPACE_APP_STATE,
             ServerConfigurationState::LoginInitialization,
@@ -19,7 +19,7 @@ impl KrillStorage {
     pub async fn set_app_state_initialized(&self) -> KrillResult<()> {
         let keyspace = self.app_state_keyspace();
 
-        self.set_op(
+        self.set(
             keyspace,
             Self::KEYSPACE_APP_STATE,
             ServerConfigurationState::Initialized,
@@ -35,11 +35,9 @@ impl KrillStorage {
 
     async fn get_app_state_inner(
         &self,
-        keyspace: async_dup::Arc<fjall::SingleWriterTxKeyspace>,
+        keyspace: fjall::SingleWriterTxKeyspace,
     ) -> KrillResult<ServerConfigurationState> {
-        let value: Option<Vec<u8>> = self
-            .get_op(keyspace.clone(), Self::KEYSPACE_APP_STATE)
-            .await?;
+        let value: Option<Vec<u8>> = self.get(keyspace.clone(), Self::KEYSPACE_APP_STATE).await?;
 
         if let Some(bytes) = value {
             bitcode::decode::<ServerConfigurationState>(&bytes)
@@ -47,7 +45,7 @@ impl KrillStorage {
         } else {
             let app_state = ServerConfigurationState::default();
 
-            self.set_op(keyspace, Self::KEYSPACE_APP_STATE, app_state)
+            self.set(keyspace, Self::KEYSPACE_APP_STATE, app_state)
                 .await?;
 
             Ok(app_state)
