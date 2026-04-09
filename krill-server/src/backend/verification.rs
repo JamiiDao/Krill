@@ -623,7 +623,7 @@ fn build_cookie(res: &mut Response, auth_token_as_cookie: &str) -> ServerFnResul
 
 #[cfg(feature = "server")]
 fn redirect_error_header(res: &mut Response, error: &str) -> ServerFnResult<()> {
-    *res.status_mut() = StatusCode::TEMPORARY_REDIRECT;
+    *res.status_mut() = StatusCode::SEE_OTHER;
 
     use percent_encoding::{utf8_percent_encode, AsciiSet, CONTROLS};
 
@@ -653,7 +653,7 @@ fn redirect_error_header(res: &mut Response, error: &str) -> ServerFnResult<()> 
 
 #[cfg(feature = "server")]
 fn redirect_success_header(res: &mut Response) -> ServerFnResult<()> {
-    *res.status_mut() = StatusCode::TEMPORARY_REDIRECT;
+    *res.status_mut() = StatusCode::SEE_OTHER;
 
     let route = crate::RouteUtils::DASHBOARD
         .parse::<dioxus_fullstack::HeaderValue>()
