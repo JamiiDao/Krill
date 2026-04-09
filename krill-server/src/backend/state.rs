@@ -52,7 +52,7 @@ pub(crate) async fn check_app_state(request: Request, next: Next) -> impl IntoRe
             return next.run(request).await;
         }
 
-        return Redirect::temporary(RouteUtils::CONFIGURATION).into_response();
+        return Redirect::to(RouteUtils::CONFIGURATION).into_response();
     }
 
     if state == ServerConfigurationState::LoginInitialization {
@@ -62,7 +62,7 @@ pub(crate) async fn check_app_state(request: Request, next: Next) -> impl IntoRe
         {
             return next.run(request).await;
         } else {
-            return Redirect::temporary("/verify-support-mail").into_response();
+            return Redirect::to("/verify-support-mail").into_response();
         }
     }
 
@@ -72,17 +72,17 @@ pub(crate) async fn check_app_state(request: Request, next: Next) -> impl IntoRe
         || path.starts_with("/api/send_superuser_login_auth_link")
         || path.starts_with("/verify-support-mail")
     {
-        return Redirect::temporary(RouteUtils::DASHBOARD).into_response();
+        return Redirect::to(RouteUtils::DASHBOARD).into_response();
     }
 
     let fetch_cookie_outcome = fetch_cookie(request.headers()).await;
 
-    tracing::info!("fetch_cookie_outcome : {:?}", &fetch_cookie_outcome);
-
     match fetch_cookie_outcome {
         Ok(Some(_)) => {
+            let path = request.uri().path();
+
             if path == RouteUtils::LOGIN {
-                Redirect::temporary(RouteUtils::DASHBOARD).into_response()
+                Redirect::to(RouteUtils::DASHBOARD).into_response()
             } else {
                 next.run(request).await
             }
@@ -92,7 +92,7 @@ pub(crate) async fn check_app_state(request: Request, next: Next) -> impl IntoRe
             if path == RouteUtils::LOGIN {
                 next.run(request).await
             } else {
-                Redirect::temporary(RouteUtils::LOGIN).into_response()
+                Redirect::to(RouteUtils::LOGIN).into_response()
             }
         }
         Err(error) => redirect_to_error(error).into_response(),
@@ -109,7 +109,7 @@ fn redirect_to_error(error: KrillError) -> Redirect {
 
     let error_route = crate::RouteUtils::ERRORS.to_string() + "/" + error.as_str();
 
-    Redirect::temporary(&error_route)
+    Redirect::to(&error_route)
 }
 
 pub(crate) async fn load_app_state(store: &KrillStorage) -> KrillResult<ServerConfigurationState> {
@@ -131,18 +131,12 @@ pub async fn server_state() -> KrillResult<ServerConfigurationState> {
 }
 
 pub(crate) async fn fetch_cookie(headers: &HeaderMap) -> KrillResult<Option<blake3::Hash>> {
-    tracing::info!("RAW COOKIE HEADER: {:?}", headers.get("cookie"));
-
     let jar = CookieJar::from_headers(headers);
-
-    tracing::info!("USER COOKIE JAR{:?}", &jar);
 
     let session_cookie =
         if let Some(cookie) = jar.get(AuthTokenDetails::COOKIE_AUTH_TOKEN_IDENTIFIER) {
             cookie.value()
         } else {
-            tracing::info!("USER COOKIE MISSING");
-
             return Ok(Option::None);
         };
 
