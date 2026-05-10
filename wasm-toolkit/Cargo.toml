@@ -17,9 +17,5 @@ thiserror.workspace = true
 wasm-bindgen.workspace = true
 wasm-bindgen-futures.workspace = true
 base64ct.workspace = true
-web-sys = { workspace = true, features = [
-    "Window",
-    "Document",
-    "Element",
-    "Storage",
-] }
+web-sys.workspace = true
+file-format.workspace = true

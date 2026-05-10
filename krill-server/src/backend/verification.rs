@@ -2,6 +2,9 @@ use dioxus::{
     fullstack::{response::Response, ServerEvents, SetCookie},
     prelude::*,
 };
+
+#[cfg(feature = "server")]
+use krill_common::{FAVICON_DEFAULT, LOGO_DEFAULT};
 use serde::{Deserialize, Serialize};
 
 use crate::ProgressStateToUiRecord;
@@ -114,8 +117,6 @@ pub async fn verification_stream(
 
 #[get("/verification-support-mail-link/{token}")]
 pub async fn verify_support_mail(token: String) -> ServerFnResult<Response> {
-    tracing::info!("TOKEN URL RECEIVED: {:?}", &token);
-
     let mut res = Response::new(axum::body::Body::empty());
 
     let storage = store().map_err(|error| ServerFnError::ServerError {
@@ -125,10 +126,6 @@ pub async fn verify_support_mail(token: String) -> ServerFnResult<Response> {
     })?;
 
     let parsed_token = ServerUtils::parse_token(&token)?;
-    tracing::info!(
-        "PARSED VERIFICATION TOKEN: {:?}",
-        AuthTokenDetails::store_key_bytes_to_hex(parsed_token)
-    );
 
     let login_init_details =
         storage
@@ -141,10 +138,6 @@ pub async fn verify_support_mail(token: String) -> ServerFnResult<Response> {
             })?;
 
     let auth_details = if let Some(auth_details) = login_init_details {
-        tracing::info!(
-            "FETCHED VERIFICATION TOKEN: {:?}",
-            AuthTokenDetails::store_key_bytes_to_hex(auth_details.token)
-        );
         auth_details
     } else {
         redirect_error_header(
@@ -203,7 +196,7 @@ pub async fn verify_support_mail(token: String) -> ServerFnResult<Response> {
 
 #[server]
 pub async fn send_superuser_login_auth_link() -> ServerFnResult<Vec<u8>> {
-    let org_info = ServerUtils::request_get_org()?;
+    let org_info = crate::ServerUtils::request_get_org()?;
 
     let holder = Holder::new_with_tld(&org_info.support_mail)
         .map_err(|error| {
@@ -249,7 +242,7 @@ pub enum ConfigVerificationOutcome {
     TestingApiKeySuccess,
     TestingApiKeyFailure(String),
     CreatingOrganization,
-    OrganizationCreated,
+    OrganizationCreated(Vec<u8>), //Returns the new org info
     OrganizationCreationFailed(String),
 }
 
@@ -281,6 +274,14 @@ impl ConfigVerificationOutcome {
         } else {
             true
         }
+    }
+
+    async fn tx_error_handler(tx: &mut SseTxInner, outcome: ConfigVerificationOutcome) -> bool {
+        let _ = tx.send(outcome).await.is_err();
+
+        tx.close_channel();
+
+        false
     }
 
     async fn tx_org_failure_handler(tx: &mut SseTxInner, error: &str) -> bool {
@@ -338,7 +339,7 @@ impl ConfigVerificationOutcome {
                     return Self::tx_handler(tx, ConfigVerificationOutcome::TestingSmtpSuccess)
                         .await;
                 } else {
-                    return Self::tx_handler(
+                    return Self::tx_error_handler(
                         tx,
                         ConfigVerificationOutcome::TestingSmtpFailure(
                             "Invalid SMTPs settings".to_string(),
@@ -348,7 +349,7 @@ impl ConfigVerificationOutcome {
                 }
             }
             Err(error) => {
-                return Self::tx_handler(
+                return Self::tx_error_handler(
                     tx,
                     ConfigVerificationOutcome::TestingSmtpFailure(format!(
                         "Unable to test SMTP Settings. {}",
@@ -408,6 +409,20 @@ impl ConfigVerificationOutcome {
         api_key: &str,
         org_info: OrganizationInfo,
     ) -> bool {
+        let media_checker = |bytes: &[u8]| -> bool {
+            wasm_toolkit::WasmToolkitCommon::to_file_format_kind(bytes) == file_format::Kind::Image
+        };
+
+        if !media_checker(&org_info.logo) {
+            return Self::tx_org_failure_handler(tx, "Invalid Logo. Only images are accepted")
+                .await;
+        }
+
+        if !media_checker(&org_info.favicon) {
+            return Self::tx_org_failure_handler(tx, "Invalid Logo. Only images are accepted")
+                .await;
+        }
+
         if SERVER_MAIL_CONNECTION.get().is_some() {
             return Self::tx_org_failure_handler(
                 tx,
@@ -488,7 +503,15 @@ impl ConfigVerificationOutcome {
         SERVER_ORG_INFO.get_or_init(|| org_info);
         SERVER_MAIL_CONNECTION.get_or_init(|| mailer);
 
-        Self::tx_handler(tx, ConfigVerificationOutcome::OrganizationCreated).await
+        if let Some(info) = SERVER_ORG_INFO.get().cloned() {
+            Self::tx_handler(
+                tx,
+                ConfigVerificationOutcome::OrganizationCreated(bitcode::encode(&info)),
+            )
+            .await
+        } else {
+            return Self::tx_org_failure_handler(tx, "organization was created successfully but server was not able to send the registered org info").await;
+        }
     }
 }
 
@@ -588,12 +611,20 @@ async fn validate_org_details(
         return (false, org_info);
     }
 
-    if let Some((favicon_bytes, mime)) = details.favicon.clone() {
-        org_info.favicon = (favicon_bytes, mime.trim().to_string());
+    if details.favicon.is_empty() {
+        if details.logo.is_empty() {
+            org_info.favicon = FAVICON_DEFAULT.to_vec();
+        } else {
+            org_info.favicon = details.logo.clone();
+        }
+    } else {
+        org_info.favicon = details.favicon.clone();
     }
 
-    if let Some((logo_bytes, mime)) = details.logo.clone() {
-        org_info.logo = (logo_bytes, mime.trim().to_string());
+    if details.logo.is_empty() {
+        org_info.logo = LOGO_DEFAULT.to_vec();
+    } else {
+        org_info.logo = details.logo.clone();
     }
 
     if let Some(support_mail) = details.support_mail.clone() {

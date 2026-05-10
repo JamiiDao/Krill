@@ -1,9 +1,10 @@
 use dioxus::prelude::*;
+use krill_common::OrganizationInfo;
 use wasm_bindgen_futures::spawn_local;
 
 use crate::{
-    backend::ConfigVerificationOutcome, ClearButton, ConfigurationProgress, PrimaryButton,
-    ProgressStateToUiRecord, Translations, NOTIFICATION_MANAGER, WINDOW,
+    backend::ConfigVerificationOutcome, ClearButton, ConfigurationProgress, OrgCacheOps,
+    PrimaryButton, ProgressStateToUiRecord, Translations, NOTIFICATION_MANAGER, WINDOW,
 };
 
 #[component]
@@ -190,7 +191,22 @@ fn event_matcher(
                 &translations.read().translate("creating_org"),
             ));
         }
-        ConfigVerificationOutcome::OrganizationCreated => {
+        ConfigVerificationOutcome::OrganizationCreated(bytes) => {
+            match bitcode::decode::<OrganizationInfo>(&bytes) {
+                Ok(org_info) => {
+                    if let Err(error) = OrgCacheOps::set_org_info(&org_info) {
+                        tracing::error!("Set OrganizationInfo to cache error: {:?}", &error);
+                    }
+                }
+                Err(_) => {
+                    events.write().push(error_event(
+                        "Unable to decode the received organization data",
+                    ));
+
+                    return;
+                }
+            };
+
             events.write().push(event_succeeded(
                 &translations.read().translate("created_org"),
             ));

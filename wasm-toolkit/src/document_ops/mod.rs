@@ -2,6 +2,7 @@ use web_sys::Document;
 
 mod css_variables;
 mod elements;
+mod favicon;
 mod focus;
 
 mod dropzone;

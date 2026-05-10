@@ -1,4 +1,7 @@
+use std::borrow::Cow;
+
 use camino::Utf8PathBuf;
+use file_format::{FileFormat, Kind as FileFormatKind};
 
 pub struct KrillUtils;
 

@@ -20,9 +20,15 @@ pub(crate) static SERVER_APP_STATE: OnceLock<Arc<RwLock<ServerConfigurationState
 pub(crate) async fn check_app_state(request: Request, next: Next) -> impl IntoResponse {
     let path = request.uri().path();
 
+    if path == "/" {
+        return next.run(request).await;
+    }
+
     if path.starts_with("/api/supported_languages")
+        || path.starts_with("/api/fetch_org_info")
         || path.starts_with(crate::RouteUtils::LOGOUT)
         || path.starts_with(crate::RouteUtils::ERRORS)
+        || path.starts_with("/logo")
     {
         return next.run(request).await;
     }

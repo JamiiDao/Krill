@@ -52,12 +52,12 @@ pub fn OrgInfo() -> Element {
                             processor.set_support_mail(support_mail.read().as_str());
 
                             if let Some(logo_info) = logo.get(0) {
-                                processor.set_logo(logo_info.data.clone(), logo_info.r#type.to_string());
+                                processor.set_logo(logo_info.data.clone());
                             }
 
                             if let Some(favicon_info) = favicon.get(0) {
                                 processor
-                                    .set_favicon(favicon_info.data.clone(), favicon_info.r#type.to_string());
+                                    .set_favicon(favicon_info.data.clone());
                             }
                             if let Err(error) = processor.transition() {
                                 spawn(async move {
@@ -83,7 +83,7 @@ fn OrgName(name: Signal<String>) -> Element {
             label {
                 class: "w-full flex block mb-2.5 text-md font-medium text-heading font-[subheadingfont] dark:text-[var(--primary-color)]",
                 r#for: "org-name",
-                {translations.read().translate("organization_logo")}
+                {translations.read().translate("org_name")}
             }
             div { class: "relative w-full",
                 div { class: "absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none",
