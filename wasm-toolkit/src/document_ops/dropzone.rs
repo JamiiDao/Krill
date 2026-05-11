@@ -107,7 +107,7 @@ impl WasmDocument {
             let drop_event_callback = Closure::wrap(Box::new(move |event: DragEvent| {
                 event.prevent_default();
 
-                web_sys::console::log_1(&"DROPPED EVENT RECEIVED".into());
+                tracing::error!("DROPPED EVENT RECEIVED");
 
                 if let Err(error) = cloned_dropzone.class_list().remove_1("hover") {
                     error_sender_fn(error_sender.clone(), error);
@@ -135,10 +135,8 @@ impl WasmDocument {
                                         error_sender.clone(),
                                     );
                                 } else {
-                                    #[cfg(debug_assertions)]
-                                    web_sys::console::log_1(
-                                        &"Dropped file is not allowed in the filter for mime types"
-                                            .into(),
+                                    tracing::error!(
+                                        "Dropped file is not allowed in the filter for mime types"
                                     );
                                 }
                             }
@@ -170,7 +168,7 @@ impl WasmDocument {
             let selected_event_callback = Closure::wrap(Box::new(move |event: web_sys::Event| {
                 event.prevent_default();
 
-                web_sys::console::log_1(&"SELECTED FILE EVENT RECEIVED".into());
+                tracing::error!("SELECTED FILE EVENT RECEIVED");
 
                 if let Err(error) = cloned_dropzone.class_list().remove_1("hover") {
                     error_sender_fn(error_sender.clone(), error);
@@ -209,10 +207,8 @@ impl WasmDocument {
                                         error_sender.clone(),
                                     );
                                 } else {
-                                    #[cfg(debug_assertions)]
-                                    web_sys::console::log_1(
-                                        &"Selected file is not allowed in the filter for mime types"
-                                            .into(),
+                                    tracing::error!(
+                                        "Selected file is not allowed in the filter for mime types"
                                     );
                                 }
                             }
@@ -354,9 +350,8 @@ impl FileUploadInfo {
                                 files.push(parsed_file)
                             }
                         } else {
-                            #[cfg(debug_assertions)]
-                            web_sys::console::log_1(
-                                &"Dropped file is not allowed in the filter for mime types".into(),
+                            tracing::error!(
+                                "Dropped file is not allowed in the filter for mime types"
                             );
                         }
                     }

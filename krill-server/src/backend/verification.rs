@@ -2,12 +2,13 @@ use dioxus::{
     fullstack::{response::Response, ServerEvents, SetCookie},
     prelude::*,
 };
-
-#[cfg(feature = "server")]
-use krill_common::{FAVICON_DEFAULT, LOGO_DEFAULT};
+use krill_common::{KrillError, KrillResult, OrganizationInfo, UserRole, VerifyMailDetailsToUi};
 use serde::{Deserialize, Serialize};
 
 use crate::ProgressStateToUiRecord;
+
+#[cfg(feature = "server")]
+use krill_common::{FAVICON_DEFAULT, LOGO_DEFAULT};
 
 #[cfg(feature = "server")]
 use {
@@ -16,8 +17,6 @@ use {
     krill_mail::{EmailEnvelopeDetails, KrillSmtpsBuilder},
     solana_tx_parser::{JsonRpcCluster, SolanaTxParserUtils},
 };
-
-use krill_common::{KrillError, KrillResult, OrganizationInfo, UserRole, VerifyMailDetailsToUi};
 
 #[cfg(feature = "server")]
 use crate::{

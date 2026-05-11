@@ -139,3 +139,7 @@
         background-position: 0 0;
     }
 }
+
+.icon {
+    color: var(--primary-color);
+}

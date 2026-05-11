@@ -9,3 +9,6 @@ pub use configuration::*;
 
 mod errors;
 pub use errors::*;
+
+mod dashboard;
+pub use dashboard::*;

@@ -54,12 +54,27 @@ pub enum WasmToolkitError {
     UnableToRemoveKeyboardFocus,
     #[error("{name} - {message}")]
     JsError { name: String, message: String },
+    #[error("{name} - {message}")]
+    JsErrorStatic {
+        name: &'static str,
+        message: &'static str,
+    },
     #[error("Session Storage not found in the window")]
     SessionStorageNotFound,
     #[error("Local Storage not found in the window")]
     LocalStorageNotFound,
     #[error("Unable to find the closed element. Error `{0}`!")]
     UnableToFindClosedElement(String),
+    #[error("Unable to get the `visualViewport`")]
+    UnableToGetVisulaViewPort,
+    #[error("Unable to get the window inner height")]
+    UnableToWindowInnerHeight,
+    #[error("Unable to get the window inner width")]
+    UnableToWindowInnerWidth,
+    #[error("Unable to get the window outer height")]
+    UnableToWindowOuterHeight,
+    #[error("Unable to get the window outer width")]
+    UnableToWindowOuterWidth,
 }
 
 impl WasmToolkitError {
