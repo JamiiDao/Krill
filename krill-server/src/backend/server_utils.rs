@@ -63,10 +63,6 @@ impl MediaTypeHttp {
             .0)
     }
 
-    pub fn take(self) -> Response {
-        self.0
-    }
-
     pub fn set_header(mut self, key: &'static str, value: HeaderValue) -> Self {
         self.0.headers_mut().insert(key, value);
 

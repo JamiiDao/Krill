@@ -132,9 +132,12 @@ pub fn VerifySupportMail() -> Element {
             } else {
                 div { class: "flex flex-col w-full items-center justify-center",
                     div { class: "flex max-w-[200px] lg:max-w-[300px]",
-                        img { src: krill_logo, alt: "Shield Logo" }
+                        img {
+                            src: krill_logo,
+                            alt: translations.read().translate("krill_shield"),
+                        }
                     }
-                    div { class: "text-4xl font-[headingfont] dark:text-[var(--primary-color)] font-black",
+                    div { class: "flex text-center text-4xl font-[headingfont] dark:text-[var(--primary-color)] font-black items-center justify-center",
                         {translations.read().translate("support_email_verify_header")}
                     }
 
@@ -142,14 +145,15 @@ pub fn VerifySupportMail() -> Element {
 
                 if error_watcher.read().is_empty() {
                     if let Some(details_inner) = details.read().as_ref() {
-                        div { class: "flex flex-col",
+                        div { class: "flex flex-col items-center justify-center",
                             {translations.read().translate("support_email_verify_subheader")}
                             " "
                             {details_inner.obsf_mail.as_str()}
 
                             if let Some(count) = countdown.read().as_ref() {
                                 div { class: "flex w-full items-center justify-center mt-1 font-[monospacefont] text-lg",
-                                    "Retry in"
+
+                                    {translations.read().translate("retry_in")}
 
                                     span { class: "flex items-center justify-center ml-2 dark:text-[var(--primary-color)]",
                                         {count.to_string()}

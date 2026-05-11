@@ -149,9 +149,10 @@ impl AuthTokenDetails {
     pub fn auth_token_as_cookie_raw(
         &self,
         cookie_auth_token: [u8; Self::AUTH_TOKEN_LEN],
+        same_site: &str,
     ) -> String {
         format!(
-            "{}={}; Path=/; HttpOnly;{} SameSite=Strict; Max-Age={}",
+            "{}={}; Path=/; HttpOnly;{} SameSite={same_site}; Max-Age={}",
             Self::COOKIE_AUTH_TOKEN_IDENTIFIER,
             Self::store_key_bytes_to_hex(cookie_auth_token),
             if cfg!(not(debug_assertions)) {
