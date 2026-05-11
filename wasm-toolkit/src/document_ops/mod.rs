@@ -19,4 +19,8 @@ impl WasmDocument {
     pub fn inner(&self) -> &Document {
         &self.0
     }
+
+    pub fn set_page_title(&self, page_title: &str) {
+        self.inner().set_title(page_title);
+    }
 }

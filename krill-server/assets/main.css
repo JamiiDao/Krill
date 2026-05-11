@@ -35,8 +35,8 @@
 .krill-bg-dots {
     background-image:
         radial-gradient(circle at top left,
-            rgba(220, 220, 220, 0.1) 1px,
-            transparent 2px);
+            rgba(220, 220, 220, 0.2) 1px,
+            transparent 1px);
 
     background-size: 24px 24px;
 }

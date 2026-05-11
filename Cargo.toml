@@ -87,6 +87,7 @@ web-sys = { version = "0.3.85", features = [
     "ScrollToOptions",
     "HtmlLinkElement",
     "Storage",
+    "NodeList",
 ] }
 gloo-timers = { version = "0.3.0", default-features = false }
 countries-iso3166 = { version = "1.6.0", features = [

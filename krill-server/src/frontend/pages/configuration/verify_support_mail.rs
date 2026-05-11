@@ -23,8 +23,6 @@ pub fn VerifySupportMail() -> Element {
 
     use_effect(move || {
         spawn(async move {
-            crate::load_css_variables_and_favicon().await;
-
             match Translations::get_translation(
                 "support-mail-verification-page",
                 SELECTED_LANGUAGE.read().code(),

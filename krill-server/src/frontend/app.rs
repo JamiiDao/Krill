@@ -3,7 +3,7 @@ use std::{iter::repeat_with, sync::LazyLock};
 use async_channel::Receiver;
 use countries_iso3166::BC47LanguageInfo;
 use dioxus::prelude::*;
-use krill_common::{ColorSchemePreference, DynamicColorScheme, OrganizationInfo, FAVICON_DEFAULT};
+use krill_common::{ColorSchemePreference, DynamicColorScheme, OrganizationInfo};
 use wasm_toolkit::{
     NotificationType, Notifications, WasmDocument, WasmToolkitError, WasmToolkitResult, WasmWindow,
 };
@@ -74,7 +74,7 @@ pub fn app() -> Element {
                 },
             }
 
-            load_css_variables_and_favicon().await;
+            bind_org_info_to_page().await;
             check_dark_mode().await;
             dark_mode_listener().await;
         });
@@ -179,7 +179,7 @@ async fn dark_mode_listener() {
     }
 }
 
-pub(crate) async fn load_css_variables_and_favicon() {
+pub(crate) async fn bind_org_info_to_page() {
     let org_info = match OrgCacheOps::get_org_info() {
         Err(error) => {
             tracing::error!("Set OrganizationInfo to cache error: {:?}", &error);
@@ -187,6 +187,10 @@ pub(crate) async fn load_css_variables_and_favicon() {
         }
         Ok(value) => value,
     };
+
+    DOCUMENT.read().set_page_title(&org_info.name);
+
+    finalize_variable(DOCUMENT.read().set_favicon(&org_info.favicon)).await;
 
     finalize_variable(
         DOCUMENT
