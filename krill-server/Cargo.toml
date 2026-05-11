@@ -12,7 +12,7 @@ krill-store = { workspace = true, optional = true }
 krill-mail = { workspace = true, optional = true }
 solana-tx-parser = { workspace = true, optional = true }
 
-dioxus = { version = "0.7", features = ["fullstack", "router"] }
+dioxus = { version = "0.7.9", features = ["fullstack", "router"] }
 axum = { version = "0.8", optional = true }
 reqwest.workspace = true
 tracing = "0.1.44"
@@ -41,6 +41,7 @@ byte_prefix = "1.0.0"
 url.workspace = true
 gloo-timers.workspace = true
 percent-encoding = { version = "2.3.2", features = ["std"] }
+file-format.workspace = true
 
 [features]
 web = ["dioxus/web", "dep:async-channel"]

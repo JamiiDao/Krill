@@ -9,13 +9,6 @@ pub fn Home() -> Element {
 }
 
 #[component]
-pub fn Login() -> Element {
-    rsx! {
-        div { "LOGIN ROUTE" }
-    }
-}
-
-#[component]
 pub fn Dashboard() -> Element {
     rsx! {
         div { "Dashboard ROUTE" }

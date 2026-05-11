@@ -10,11 +10,8 @@ pub use pages::*;
 mod notifications;
 pub use notifications::*;
 
-mod assets;
-pub use assets::*;
-
-mod asset_icons;
-pub use asset_icons::*;
+mod asset_ops;
+pub use asset_ops::*;
 
 mod svg_icons;
 pub use svg_icons::*;

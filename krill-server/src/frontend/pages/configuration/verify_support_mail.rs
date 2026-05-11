@@ -23,6 +23,8 @@ pub fn VerifySupportMail() -> Element {
 
     use_effect(move || {
         spawn(async move {
+            crate::load_css_variables_and_favicon().await;
+
             match Translations::get_translation(
                 "support-mail-verification-page",
                 SELECTED_LANGUAGE.read().code(),
@@ -125,7 +127,7 @@ pub fn VerifySupportMail() -> Element {
 
     rsx! {
 
-        div { class: "flex flex-col w-full min-h-screen items-center justify-center p-5",
+        div { class: "krill-bg-dots flex flex-col w-full min-h-screen items-center justify-center p-5",
 
             if *loading_langs.read() {
                 LoadingLanguageTranslation {}

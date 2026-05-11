@@ -3,14 +3,13 @@ use std::{iter::repeat_with, sync::LazyLock};
 use async_channel::Receiver;
 use countries_iso3166::BC47LanguageInfo;
 use dioxus::prelude::*;
-use krill_common::{ColorScheme, ColorSchemePreference, DynamicColorScheme};
+use krill_common::{ColorSchemePreference, DynamicColorScheme, OrganizationInfo, FAVICON_DEFAULT};
 use wasm_toolkit::{
     NotificationType, Notifications, WasmDocument, WasmToolkitError, WasmToolkitResult, WasmWindow,
 };
 
 use crate::{
-    frontend::{FAVICON, TAILWIND_CSS},
-    NotificationComponent, Route, SupportedLanguages,
+    frontend::TAILWIND_CSS, NotificationComponent, OrgCacheOps, Route, SupportedLanguages,
 };
 
 pub(crate) static NOTIFICATION_MANAGER: LazyLock<Notifications> =
@@ -35,9 +34,6 @@ pub(crate) static DOCUMENT: GlobalSignal<WasmDocument> = Signal::global(|| {
     document
 });
 
-pub(crate) static CLIENT_COLOR_SCHEME: GlobalSignal<ColorScheme> =
-    Signal::global(|| ColorScheme::default());
-
 pub(crate) static DYNAMIC_COLOR_SCHEME: GlobalSignal<DynamicColorScheme> =
     Signal::global(|| DynamicColorScheme::default());
 
@@ -49,36 +45,36 @@ pub(crate) static SELECTED_LANGUAGE: GlobalSignal<BC47LanguageInfo> =
     Signal::global(|| BC47LanguageInfo::default());
 
 pub fn app() -> Element {
-    let color_scheme = use_server_future(move || async move {
-        let outcome = fetch_color_scheme().await;
+    use_effect(move || {
+        spawn(async move {
+            match fetch_org_info().await {
+                Err(error) => {
+                    let message = "Fetching organization info error. Error: `".to_string()
+                        + error.to_string().as_str()
+                        + "`.";
 
-        match outcome {
-            Err(error) => {
-                let message = "Fetching brand colors error. Error: `".to_string()
-                    + error.to_string().as_str()
-                    + "`.";
-
-                NOTIFICATION_MANAGER
-                    .send_final(NotificationType::Failure(WasmToolkitError::Op(message)))
-                    .await;
-            }
-            Ok(color_scheme_ok) => match bitcode::decode::<ColorScheme>(&color_scheme_ok) {
-                Ok(decoded_color_scheme) => {
-                    *CLIENT_COLOR_SCHEME.write() = decoded_color_scheme;
-                }
-                Err(_) => {
-                    let message = "UNABLE TO DECODE BRAND COLORS".to_string();
                     NOTIFICATION_MANAGER
                         .send_final(NotificationType::Failure(WasmToolkitError::Op(message)))
                         .await;
                 }
-            },
-        }
-    });
+                Ok(org_info_bytes) => match bitcode::decode::<OrganizationInfo>(&org_info_bytes) {
+                    Ok(decoded_org_info) => {
+                        if let Err(error) = OrgCacheOps::set_org_info(&decoded_org_info) {
+                            NOTIFICATION_MANAGER
+                                .send_final(NotificationType::Failure(error))
+                                .await;
+                        }
+                    }
+                    Err(_) => {
+                        let message = "UNABLE TO DECODE ORGANIZATION INFO".to_string();
+                        NOTIFICATION_MANAGER
+                            .send_final(NotificationType::Failure(WasmToolkitError::Op(message)))
+                            .await;
+                    }
+                },
+            }
 
-    use_effect(move || {
-        spawn(async move {
-            load_css_variables().await;
+            load_css_variables_and_favicon().await;
             check_dark_mode().await;
             dark_mode_listener().await;
         });
@@ -89,26 +85,12 @@ pub fn app() -> Element {
             name: "viewport",
             content: "width=device-width, initial-scale=1.0",
         }
-        document::Link { rel: "icon", href: FAVICON }
         document::Link { rel: "stylesheet", href: TAILWIND_CSS }
         document::Link { rel: "stylesheet", href: crate::MAIN_CSS }
         document::Link { rel: "stylesheet", href: crate::FONT_STYLES }
         {crate::extra_css_styles()}
-        div { class: "bg-[var(--background-color)] flex flex-col min-h-screen items-end justify-start dark:text-white light:text-black",
+        div { class: "bg-[var(--background-color)] krill-bg-dots flex flex-col min-h-screen items-end justify-start dark:text-white light:text-black",
 
-            {
-                if let Err(error) = color_scheme {
-                    {
-                        tracing::error!(
-                            "Fetching Color Scheme (Brand Colors). Error: `{}`", error
-                            .to_string()
-                        );
-                    }
-                    rsx! {}
-                } else {
-                    rsx! {}
-                }
-            }
             NotificationComponent {}
             Router::<Route> {}
         }
@@ -129,6 +111,14 @@ async fn check_dark_mode() {
 }
 
 async fn match_bg_scheme(is_dark_mode: bool) {
+    let org_info = match OrgCacheOps::get_org_info() {
+        Err(error) => {
+            tracing::error!("Set OrganizationInfo to cache error: {:?}", &error);
+            return;
+        }
+        Ok(value) => value,
+    };
+
     if is_dark_mode {
         DYNAMIC_COLOR_SCHEME.write().set_dark_mode();
     } else {
@@ -139,7 +129,7 @@ async fn match_bg_scheme(is_dark_mode: bool) {
         ColorSchemePreference::Dark => {
             let outcome = DOCUMENT
                 .read()
-                .set_background_color(CLIENT_COLOR_SCHEME.read().background_dark());
+                .set_background_color(org_info.color_scheme.background_dark());
 
             if let Err(error) = outcome {
                 NOTIFICATION_MANAGER
@@ -152,7 +142,7 @@ async fn match_bg_scheme(is_dark_mode: bool) {
         ColorSchemePreference::Light => {
             let outcome = DOCUMENT
                 .read()
-                .set_background_color(CLIENT_COLOR_SCHEME.read().background_light());
+                .set_background_color(org_info.color_scheme.background_light());
 
             if let Err(error) = outcome {
                 NOTIFICATION_MANAGER
@@ -189,25 +179,33 @@ async fn dark_mode_listener() {
     }
 }
 
-async fn load_css_variables() {
+pub(crate) async fn load_css_variables_and_favicon() {
+    let org_info = match OrgCacheOps::get_org_info() {
+        Err(error) => {
+            tracing::error!("Set OrganizationInfo to cache error: {:?}", &error);
+            return;
+        }
+        Ok(value) => value,
+    };
+
     finalize_variable(
         DOCUMENT
             .read()
-            .set_primary_color(CLIENT_COLOR_SCHEME.read().primary_color()),
+            .set_primary_color(org_info.color_scheme.primary_color()),
     )
     .await;
 
     finalize_variable(
         DOCUMENT
             .read()
-            .set_secondary_color(CLIENT_COLOR_SCHEME.read().secondary_color()),
+            .set_secondary_color(org_info.color_scheme.secondary_color()),
     )
     .await;
 
     finalize_variable(
         DOCUMENT
             .read()
-            .set_accent_color(CLIENT_COLOR_SCHEME.read().accent_color()),
+            .set_accent_color(org_info.color_scheme.accent_color()),
     )
     .await;
 }
@@ -221,14 +219,8 @@ async fn finalize_variable(outcome: WasmToolkitResult<()>) {
 }
 
 #[server]
-async fn fetch_color_scheme() -> ServerFnResult<Vec<u8>> {
-    crate::SERVER_ORG_INFO
-        .get()
-        .cloned()
-        .ok_or(ServerFnError::ServerError {
-            message: "Unable to fetch brand colors".to_string(),
-            code: 500,
-            details: None,
-        })
-        .map(|info| bitcode::encode(&info))
+pub async fn fetch_org_info() -> ServerFnResult<Vec<u8>> {
+    let info = crate::SERVER_ORG_INFO.get().cloned().unwrap_or_default();
+
+    Ok(bitcode::encode(&info))
 }

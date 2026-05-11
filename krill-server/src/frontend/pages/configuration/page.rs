@@ -264,14 +264,14 @@ impl ProgressStateToUiRecord {
         self
     }
 
-    pub fn set_logo(&mut self, logo_bytes: Vec<u8>, mime: String) -> &mut Self {
-        self.org_info.logo.replace((logo_bytes, mime));
+    pub fn set_logo(&mut self, logo_bytes: Vec<u8>) -> &mut Self {
+        self.org_info.logo = logo_bytes;
 
         self
     }
 
-    pub fn set_favicon(&mut self, favicon_bytes: Vec<u8>, mime: String) -> &mut Self {
-        self.org_info.favicon.replace((favicon_bytes, mime));
+    pub fn set_favicon(&mut self, favicon_bytes: Vec<u8>) -> &mut Self {
+        self.org_info.favicon = favicon_bytes;
 
         self
     }
@@ -324,8 +324,8 @@ impl ProgressStateToUiRecord {
 pub struct CacheOrgInfo {
     pub name: Option<String>,
     pub support_mail: Option<String>,
-    pub logo: Option<(Vec<u8>, String)>,
-    pub favicon: Option<(Vec<u8>, String)>,
+    pub logo: Vec<u8>,
+    pub favicon: Vec<u8>,
     pub dominant_color: Option<String>,
     pub secondary_color: Option<String>,
     pub accent_color: Option<String>,
@@ -333,16 +333,15 @@ pub struct CacheOrgInfo {
 
 impl fmt::Debug for CacheOrgInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let as_hash = |byte_info: Option<&(Vec<u8>, String)>| -> Option<String> {
-            byte_info
-                .as_ref()
-                .map(|(bytes, mime)| format!("Blake3({}).{}", blake3::hash(bytes), mime))
+        let as_hash = |media_bytes: &[u8]| -> String {
+            let media_type = wasm_toolkit::WasmToolkitCommon::media_type(media_bytes);
+            format!("Blake3({}).{}", blake3::hash(media_bytes), media_type)
         };
 
         f.debug_struct("CacheOrgInfo")
             .field("name", &self.name)
             .field("support_mail", &self.support_mail)
-            .field("logo", &as_hash(self.logo.as_ref()))
+            .field("logo", &as_hash(self.logo.as_slice()))
             .field("favicon", &as_hash(self.favicon.as_ref()))
             .field("dominant_color", &self.dominant_color)
             .field("secondary_color", &self.secondary_color)

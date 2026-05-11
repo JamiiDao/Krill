@@ -1,4 +1,6 @@
-use base64ct::{Base64, Encoding};
+use std::borrow::Cow;
+
+use file_format::{FileFormat, Kind as FileFormatKind};
 use js_sys::JSON;
 use wasm_bindgen::{JsCast, JsValue};
 use web_sys::DomException;
@@ -35,12 +37,6 @@ impl WasmToolkitCommon {
             Ok(value) => value,
             Err(error) => error.to_string(),
         }
-    }
-
-    pub fn to_base64_with_mime(mime: &str, bytes: &[u8]) -> String {
-        let encoded_bytes = Base64::encode_string(bytes);
-
-        format!("data:{mime};base64,{}", encoded_bytes)
     }
 
     /*
@@ -108,5 +104,31 @@ impl WasmToolkitCommon {
         }
 
         true
+    }
+
+    pub fn bytes_to_css_base64(bytes: &[u8]) -> String {
+        use base64ct::{Base64, Encoding};
+
+        let encoded = Base64::encode_string(bytes);
+
+        let media_type = Self::media_type(bytes);
+
+        format!("data:{};base64,{}", media_type, encoded)
+    }
+
+    pub fn media_type(bytes: &[u8]) -> Cow<'_, str> {
+        Self::to_file_format(bytes).media_type().to_string().into()
+    }
+
+    pub fn media_type_extension(bytes: &[u8]) -> Cow<'_, str> {
+        Self::to_file_format(bytes).extension().to_string().into()
+    }
+
+    pub fn to_file_format_kind(bytes: &[u8]) -> FileFormatKind {
+        Self::to_file_format(bytes).kind()
+    }
+
+    pub fn to_file_format(bytes: &[u8]) -> FileFormat {
+        FileFormat::from_bytes(bytes)
     }
 }

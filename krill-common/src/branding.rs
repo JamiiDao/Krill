@@ -1,4 +1,9 @@
+use std::borrow::Cow;
+
 use bitcode::{Decode, Encode};
+
+pub const FAVICON_DEFAULT: &[u8] = include_bytes!("../../assets/favicon.png");
+pub const LOGO_DEFAULT: &[u8] = include_bytes!("../../assets/krill-logo.svg");
 
 #[derive(Debug, Default, PartialEq, Eq, Clone, Copy, Encode, Decode)]
 pub enum ColorSchemePreference {
@@ -61,13 +66,35 @@ impl Default for DynamicColorScheme {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Encode, Decode, Clone, Default)]
+#[derive(Debug, PartialEq, Eq, Encode, Decode, Clone)]
 pub struct OrganizationInfo {
     pub name: String,
-    pub logo: (Vec<u8>, String),
-    pub favicon: (Vec<u8>, String),
+    pub logo: Vec<u8>,
+    pub favicon: Vec<u8>,
     pub support_mail: String,
     pub color_scheme: ColorScheme,
+}
+
+impl Default for OrganizationInfo {
+    fn default() -> Self {
+        Self {
+            name: "Example".to_string(),
+            logo: LOGO_DEFAULT.to_vec(),
+            favicon: FAVICON_DEFAULT.to_vec(),
+            support_mail: "support@example.com".to_string(),
+            color_scheme: ColorScheme::default(),
+        }
+    }
+}
+
+impl OrganizationInfo {
+    pub fn logo_to_css_base64(&self) -> Cow<'static, str> {
+        wasm_toolkit::WasmToolkitCommon::bytes_to_css_base64(self.logo.as_slice()).into()
+    }
+
+    pub fn favicon_to_css_base64(&self) -> Cow<'static, str> {
+        wasm_toolkit::WasmToolkitCommon::bytes_to_css_base64(self.favicon.as_slice()).into()
+    }
 }
 
 /// Colors are defined by CSS `color:var(--user-color)` variables globally

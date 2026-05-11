@@ -19,12 +19,6 @@ impl KrillStorage {
     ) -> KrillResult<()> {
         let keyspace = self.org_info_keyspace();
 
-        let org_info_exists = self.get_org_info().await?;
-
-        if !org_info_exists.name.is_empty() {
-            return Err(KrillError::Store("Organization Already exists".to_string()));
-        }
-
         let mut kvs = Vec::<(String, Vec<u8>)>::default();
         kvs.push((Self::ORG_INFO_KEY.to_string(), bitcode::encode(&org_info)));
         kvs.push((Self::SMTPS_KEY.to_string(), bitcode::encode(&smtps_uri)));
