@@ -4,3 +4,5 @@ loading_verification_page = Loading Verification Page
 support_email_verify_subheader = A verification link has been sent to 
 resend_verification_code = Resend Verification Code
 seconds = seconds
+retry_in = Retry in
+krill_shield = Shield logo

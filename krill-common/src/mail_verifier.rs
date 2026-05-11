@@ -45,7 +45,7 @@ impl From<([u8; AuthTokenDetails::AUTH_TOKEN_LEN], AuthTokenDetails)> for Verify
             timestamp: auth_token_details.timestamp_bytes(),
             expiry,
             retry: auth_token_details.retry(),
-            cookie: auth_token_details.auth_token_as_cookie_raw(auth_token),
+            cookie: auth_token_details.auth_token_as_cookie_raw(auth_token, "Lax"),
         }
     }
 }

@@ -188,7 +188,9 @@ pub async fn verify_support_mail(token: String) -> ServerFnResult<Response> {
     redirect_success_header(&mut res)?;
     build_cookie(
         &mut res,
-        &auth_details.details.auth_token_as_cookie_raw(store_key),
+        &auth_details
+            .details
+            .auth_token_as_cookie_raw(store_key, "Lax"),
     )?;
 
     Ok(res)
@@ -697,7 +699,7 @@ fn redirect_error_header(res: &mut Response, error: &str) -> ServerFnResult<()> 
 
 #[cfg(feature = "server")]
 fn redirect_success_header(res: &mut Response) -> ServerFnResult<()> {
-    *res.status_mut() = StatusCode::SEE_OTHER;
+    *res.status_mut() = StatusCode::TEMPORARY_REDIRECT;
 
     let route = crate::RouteUtils::DASHBOARD
         .parse::<dioxus_fullstack::HeaderValue>()

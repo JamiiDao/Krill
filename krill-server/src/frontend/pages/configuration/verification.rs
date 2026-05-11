@@ -118,7 +118,7 @@ fn event_succeeded(text_content: &str) -> Element {
                 img { src: crate::CHECKMARK_URL, alt: "checkmark" }
             }
 
-            span { class: "hidden md:flex px-0.5  font-[subheadingfont]
+            span { class: "md:flex px-0.5  font-[subheadingfont]
                     font-bold font-black text-sm lg:text-lg  text-green-500",
                 {text_content}
             }
@@ -133,7 +133,7 @@ fn error_event(text_content: &str) -> Element {
                 img { src: crate::ERROR_ICON, alt: "error" }
             }
 
-            span { class: "hidden md:flex px-0.5  font-[subheadingfont]
+            span { class: "md:flex px-0.5  font-[subheadingfont]
                     font-bold font-black text-sm lg:text-lg  text-red-500",
                 {text_content}
             }
