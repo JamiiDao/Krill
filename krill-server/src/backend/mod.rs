@@ -1,5 +1,3 @@
-mod assets;
-
 mod dashboard;
 pub use dashboard::*;
 

@@ -13,7 +13,9 @@ pub fn OrgInfo() -> Element {
 
     let name = use_signal(|| String::default());
     let support_mail = use_signal(|| String::default());
-    let logo = use_signal(|| Vec::<FileUploadInfo>::default());
+    let logo_icon = use_signal(|| Vec::<FileUploadInfo>::default());
+    let logo_horizontal = use_signal(|| Vec::<FileUploadInfo>::default());
+    let logo_vertical = use_signal(|| Vec::<FileUploadInfo>::default());
     let favicon = use_signal(|| Vec::<FileUploadInfo>::default());
 
     rsx! {
@@ -23,9 +25,19 @@ pub fn OrgInfo() -> Element {
             SupportMail { support_mail }
 
             UploadImage {
-                heading: translations.read().translate("organization_logo"),
-                dropped_files: logo,
-                dropzone_id: "logo-dropzone-file",
+                heading: translations.read().translate("organization_logo_icon"),
+                dropped_files: logo_icon,
+                dropzone_id: "logo-icon-dropzone-file",
+            }
+            UploadImage {
+                heading: translations.read().translate("organization_logo_horizontal"),
+                dropped_files: logo_horizontal,
+                dropzone_id: "logo-horizontal-dropzone-file",
+            }
+            UploadImage {
+                heading: translations.read().translate("organization_logo_vertical"),
+                dropped_files: logo_vertical,
+                dropzone_id: "logo-vertical-dropzone-file",
             }
             UploadImage {
                 heading: translations.read().translate("upload_image_heading"),
@@ -51,8 +63,16 @@ pub fn OrgInfo() -> Element {
                             processor.set_org_name(name.read().trim());
                             processor.set_support_mail(support_mail.read().as_str());
 
-                            if let Some(logo_info) = logo.get(0) {
-                                processor.set_logo(logo_info.data.clone());
+                            if let Some(logo_info) = logo_icon.get(0) {
+                                processor.set_logo_icon(logo_info.data.clone());
+                            }
+
+                            if let Some(logo_info) = logo_horizontal.get(0) {
+                                processor.set_logo_horizontal(logo_info.data.clone());
+                            }
+
+                            if let Some(logo_info) = logo_vertical.get(0) {
+                                processor.set_logo_vertical(logo_info.data.clone());
                             }
 
                             if let Some(favicon_info) = favicon.get(0) {

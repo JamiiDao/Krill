@@ -57,12 +57,6 @@ impl MediaTypeHttp {
         Ok(Self(res))
     }
 
-    pub fn new_one_day_cache(bytes: Vec<u8>) -> ServerFnResult<Response> {
-        Ok(Self::builder(bytes)?
-            .set_cache_control("public, max-age=86400")
-            .0)
-    }
-
     pub fn set_header(mut self, key: &'static str, value: HeaderValue) -> Self {
         self.0.headers_mut().insert(key, value);
 

@@ -207,6 +207,17 @@ impl Breakpoints {
     }
 
     #[inline]
+    pub const fn prefix(&self) -> &str {
+        match self {
+            Self::Small => "sm",
+            Self::Medium => "md",
+            Self::Large => "lg",
+            Self::ExtraLarge => "xl",
+            Self::ExtraExtraLarge => "2xl",
+        }
+    }
+
+    #[inline]
     pub const fn pixels(&self) -> f64 {
         (*self as u16) as f64
     }

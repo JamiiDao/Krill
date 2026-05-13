@@ -33,10 +33,10 @@ pub fn Header() -> Element {
         rsx! {
             div {
                 class: "krill-bg-surface-container krill-backdrop-blur-glass krill-shadow-glass",
-                class: "flex p-1",
+                class: "flex px-2 py-1",
                 img {
-                    class: "flex w-[clamp(25px,3vw,30px)]",
-                    src: org_info.read().logo_to_css_base64().to_string(),
+                    class: "flex w-[clamp(100px,120px,150px)]",
+                    src: org_info.read().logo_horizontal_to_css_base64().to_string(),
                 }
             }
         }

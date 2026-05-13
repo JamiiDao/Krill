@@ -5,11 +5,9 @@ pub const TAILWIND_CSS: Asset = asset!("/assets/tailwind.css");
 pub const FONT_STYLES: Asset = asset!("/assets/fonts/fonts-stylesheet.css");
 
 pub const COMMIT_MONO_FONT: Asset = asset!("/assets/fonts/commitmono_regular-webfont.woff2");
-
+pub const NUNITO_FONT: Asset = asset!("/assets/fonts/Nunito-Regular.woff2");
 pub const BUNGEE_HAIRLINE_FONT: Asset =
     asset!("/assets/fonts/bungeehairline-regular-webfont.woff2");
-
-pub const MARKO_ONE_FONT: Asset = asset!("/assets/fonts/markoone-regular-webfont.woff2");
 
 const _: Asset = asset!("/assets/icons", AssetOptions::folder());
 
@@ -35,7 +33,7 @@ pub fn extra_css_styles() -> Element {
 
                 @font-face {{
                     font-family: 'subheadingfont';
-                    src: url('{MARKO_ONE_FONT}') format('woff2');
+                    src: url('{NUNITO_FONT}') format('woff2');
                     font-weight: normal;
                     font-style: normal;
 

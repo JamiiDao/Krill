@@ -26,9 +26,9 @@ pub(crate) async fn check_app_state(request: Request, next: Next) -> impl IntoRe
 
     if path.starts_with("/api/supported_languages")
         || path.starts_with("/api/fetch_org_info")
+        || path == "/send-superuser-auth-link"
         || path.starts_with(crate::RouteUtils::LOGOUT)
         || path.starts_with(crate::RouteUtils::ERRORS)
-        || path.starts_with("/logo")
     {
         return next.run(request).await;
     }
@@ -64,7 +64,7 @@ pub(crate) async fn check_app_state(request: Request, next: Next) -> impl IntoRe
     if state == ServerConfigurationState::LoginInitialization {
         if path.starts_with("/verify-support-mail")
             || path.starts_with("/verification-support-mail-link")
-            || path.starts_with("/api/send_superuser_login_auth_link")
+            || path.starts_with("/send-superuser-auth-link")
         {
             return next.run(request).await;
         } else {
@@ -73,11 +73,14 @@ pub(crate) async fn check_app_state(request: Request, next: Next) -> impl IntoRe
     }
 
     // Paths that should not be run if the server state is initialized
-    if path.starts_with("/api/verification_stream")
-        || path.starts_with("/verification-support-mail-link")
-        || path.starts_with("/api/send_superuser_login_auth_link")
+    if path.starts_with("/verification-support-mail-link")
         || path.starts_with("/verify-support-mail")
     {
+        return next.run(request).await;
+    }
+
+    // Paths that should not be run if the server state is initialized
+    if path.starts_with("/api/verification_stream") {
         return Redirect::to(RouteUtils::DASHBOARD).into_response();
     }
 
@@ -162,7 +165,7 @@ pub(crate) async fn fetch_cookie(
     let storage = store()?;
 
     Ok(storage
-        .get_auth_token(cookie_hash)
+        .get_auth_token_checked(cookie_hash)
         .await?
         .map(|_| cookie_hash))
 }

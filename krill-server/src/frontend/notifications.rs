@@ -39,54 +39,18 @@ pub fn NotificationComponent() -> Element {
 
     // let events = events_queue.read();
 
-    rsx! {
-    //         div { id: "notifications",
-    //             class: "flex flex-col items-end justify-start p-2 absolute row-end",
-
-    //             div {
-    //                 class: "flex flex-col justify-start w-[40vw]",
-
-    //                 for (id, notification) in events.iter() {
-    //                     match notification {
-    //                         NotificationType::Success(value) => rsx! {
-    //                             SuccessNotification {
-    //                                 key: "{id}",
-    //                                 element_id: id.clone(),
-    //                                 notification: value.clone()
-    //                             }
-    //                         },
-    //                         NotificationType::Failure(error) => rsx! {
-    // }
-    //                             ErrorNotification {
-    //                                 key: "{id}",
-    //                                 element_id: id.clone(),
-    //                                 notification: error.to_string()
-    //                             }
-    //                         },
-    //                     }
-    //                 }
-    //             }
-            //}
-        }
+    rsx! {}
 }
 
 #[component]
 fn SuccessNotification(element_id: String, notification: String) -> Element {
-    rsx! {
-        // div{id: element_id,
-        //     class:"flex flex-row max-w-[100%] max-h-[200px] px-1 py-3 mb-10 border-[#ff660055] border-1
-        //     shadow-[-5px_2px_25px_rgba(20,20,20,0.5)] rounded-lg {GLASS_BG}",
-        //     div {class:"flex sm:w-[15%]", SvgNotificationBell {  }}
-        // }
-    }
+    rsx! {}
 }
 
 #[component]
 fn ErrorNotification(element_id: String, notification: String) -> Element {
     rsx! {
-        div{id: element_id,
-
-        }
+        div { id: element_id }
     }
 }
 

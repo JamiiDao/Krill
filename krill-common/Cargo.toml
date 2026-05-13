@@ -37,3 +37,4 @@ subtle = { version = "2.6.1", default-features = false, features = [
 ] }
 base64ct.workspace = true
 file-format.workspace = true
+time.workspace = true

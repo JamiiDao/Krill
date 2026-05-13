@@ -8,9 +8,6 @@ use serde::{Deserialize, Serialize};
 use crate::ProgressStateToUiRecord;
 
 #[cfg(feature = "server")]
-use krill_common::{FAVICON_DEFAULT, LOGO_DEFAULT};
-
-#[cfg(feature = "server")]
 use {
     dioxus::fullstack::headers::Header,
     krill_common::{AuthTokenDetails, Holder, ServerConfigurationState},
@@ -195,8 +192,8 @@ pub async fn verify_support_mail(token: String) -> ServerFnResult<Response> {
     Ok(res)
 }
 
-#[server]
-pub async fn send_superuser_login_auth_link() -> ServerFnResult<Vec<u8>> {
+#[get("/send-superuser-auth-link")]
+pub async fn send_superuser_login_auth_link() -> dioxus::Result<Vec<u8>> {
     let org_info = crate::ServerUtils::request_get_org()?;
 
     let holder = Holder::new_with_tld(&org_info.support_mail)
@@ -213,24 +210,14 @@ pub async fn send_superuser_login_auth_link() -> ServerFnResult<Vec<u8>> {
         })?
         .set_superuser();
 
-    send_auth_email_processor(
+    Ok(send_auth_email_processor(
         holder,
         "Verify that you control this email address",
         "Click or Tap the link below to verify that you control the support email address",
+        true,
     )
     .await
-    .map(|value| bitcode::encode(&value))
-    .map_err(|error| {
-        let error_message = "Error-Sending Mail";
-
-        tracing::error!("{error_message}. Error: `{error:?}`");
-
-        ServerFnError::ServerError {
-            message: error_message.to_string() + ": Internal server error",
-            code: 500,
-            details: None,
-        }
-    })
+    .map(|value| bitcode::encode(&value))?)
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
@@ -411,12 +398,35 @@ impl ConfigVerificationOutcome {
         org_info: OrganizationInfo,
     ) -> bool {
         let media_checker = |bytes: &[u8]| -> bool {
-            wasm_toolkit::WasmToolkitCommon::to_file_format_kind(bytes) == file_format::Kind::Image
+            if bytes.is_empty() {
+                return true;
+            }
+
+            let kind = wasm_toolkit::WasmToolkitCommon::to_file_format_kind(bytes);
+            tracing::info!("KIND: {:?}", kind);
+
+            kind == file_format::Kind::Image
         };
 
-        if !media_checker(&org_info.logo) {
-            return Self::tx_org_failure_handler(tx, "Invalid Logo. Only images are accepted")
+        if !media_checker(&org_info.logo_icon) {
+            return Self::tx_org_failure_handler(tx, "Invalid Logo icon. Only images are accepted")
                 .await;
+        }
+
+        if !media_checker(&org_info.logo_horizontal) {
+            return Self::tx_org_failure_handler(
+                tx,
+                "Invalid horizontal Logo. Only images are accepted",
+            )
+            .await;
+        }
+
+        if !media_checker(&org_info.logo_vertical) {
+            return Self::tx_org_failure_handler(
+                tx,
+                "Invalid vertical Logo. Only images are accepted",
+            )
+            .await;
         }
 
         if !media_checker(&org_info.favicon) {
@@ -612,20 +622,34 @@ async fn validate_org_details(
         return (false, org_info);
     }
 
+    if details.logo_icon.is_empty() {
+        tx.send(ConfigVerificationOutcome::Failure(
+            "The logo icon cannot be empty. It is required".to_string(),
+        ))
+        .await
+        .err();
+
+        return (false, org_info);
+    } else {
+        org_info.logo_icon = details.logo_icon.clone();
+    }
+
     if details.favicon.is_empty() {
-        if details.logo.is_empty() {
-            org_info.favicon = FAVICON_DEFAULT.to_vec();
-        } else {
-            org_info.favicon = details.logo.clone();
-        }
+        org_info.favicon = details.logo_icon.clone();
     } else {
         org_info.favicon = details.favicon.clone();
     }
 
-    if details.logo.is_empty() {
-        org_info.logo = LOGO_DEFAULT.to_vec();
+    if details.logo_horizontal.is_empty() {
+        org_info.logo_horizontal = details.logo_icon.clone();
     } else {
-        org_info.logo = details.logo.clone();
+        org_info.logo_horizontal = details.logo_horizontal.clone();
+    }
+
+    if details.logo_vertical.is_empty() {
+        org_info.logo_vertical = details.logo_icon.clone();
+    } else {
+        org_info.logo_vertical = details.logo_vertical.clone();
     }
 
     if let Some(support_mail) = details.support_mail.clone() {
@@ -725,6 +749,7 @@ async fn send_auth_email_processor(
     holder: Holder,
     subject: &str,
     body: &str,
+    await_response: bool,
 ) -> KrillResult<VerifyMailDetailsToUi> {
     let domain = SERVER_DOMAIN_NAME
         .get()
@@ -764,9 +789,14 @@ async fn send_auth_email_processor(
                 &auth_details.expiry_formatted(),
             ));
 
-        mailer.send(&message).await?;
+        if await_response {
+            mailer.send(&message).await?;
+            Ok((auth_token, superuser_auth_token.details).into())
+        } else {
+            tokio::spawn(async move { mailer.send(&message).await });
 
-        Ok((auth_token, superuser_auth_token.details).into())
+            Ok((auth_token, superuser_auth_token.details).into())
+        }
     } else {
         Ok((auth_token, auth_details).into())
     }

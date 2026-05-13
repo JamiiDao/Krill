@@ -10,8 +10,12 @@ use wasm_toolkit::{
 };
 
 use crate::{
-    frontend::TAILWIND_CSS, NotificationComponent, OrgCacheOps, Route, SupportedLanguages,
+    frontend::TAILWIND_CSS, ErrorComponent, ErrorUtil, Loader, NotificationComponent, OrgCacheOps,
+    Route, SupportedLanguages,
 };
+
+pub const KRILL_GLASS: &str =
+    "krill-bg-surface-container krill-backdrop-blur-glass krill-shadow-glass";
 
 pub(crate) static NOTIFICATION_MANAGER: LazyLock<Notifications> =
     LazyLock::new(|| Notifications::init());
@@ -58,69 +62,84 @@ pub fn app() -> Element {
                 }
                 Err(errors) => {
                     for error in errors {
-                        NOTIFICATION_MANAGER.send_final_error(error).await
+                        ErrorUtil::send_final_wasm_toolkit(error).await;
                     }
                 }
             }
         }
     });
 
-    use_effect(move || {
-        let sender_cloned = sender.clone();
-        spawn(async move {
-            load_measurements().await;
+    let load_org_info = use_server_future(|| fetch_org_info())?;
+    use_context_provider(|| Signal::new(OrganizationInfo::default()));
 
-            if let Err(error) = WINDOW.read().browser_measurements_listener(sender_cloned) {
-                NOTIFICATION_MANAGER.send_final_error(error).await;
-            }
+    match load_org_info.result() {
+        Some(Ok(value_result)) => {
+            let mut error_to_ui = use_signal(|| Option::<String>::default());
 
-            match fetch_org_info().await {
-                Err(error) => {
-                    let message = "Fetching organization info error. Error: `".to_string()
-                        + error.to_string().as_str()
-                        + "`.";
+            use_future(move || {
+                let sender_cloned = sender.clone();
+                async move {
+                    spawn(async move {
+                        load_measurements().await;
 
-                    NOTIFICATION_MANAGER
-                        .send_final(NotificationType::Failure(WasmToolkitError::Op(message)))
-                        .await;
+                        if let Err(error) =
+                            WINDOW.read().browser_measurements_listener(sender_cloned)
+                        {
+                            error_to_ui.write().replace(error.to_string());
+                        }
+
+                        if let Ok(decoded_org_info) = bitcode::decode(&value_result.read()) {
+                            if let Err(error) = OrgCacheOps::set_org_info(&decoded_org_info) {
+                                ErrorUtil::send_final_wasm_toolkit(error).await;
+                            } else {
+                                let mut org_info = consume_context::<Signal<OrganizationInfo>>();
+                                org_info.set(decoded_org_info);
+                            }
+                        } else {
+                            error_to_ui
+                                .write()
+                                .replace("Unable to decode `OrganizationInfo`!".to_string());
+                        }
+
+                        bind_org_info_to_page().await;
+                        check_dark_mode().await;
+                        dark_mode_listener().await;
+                    });
                 }
-                Ok(org_info_bytes) => match bitcode::decode::<OrganizationInfo>(&org_info_bytes) {
-                    Ok(decoded_org_info) => {
-                        if let Err(error) = OrgCacheOps::set_org_info(&decoded_org_info) {
-                            NOTIFICATION_MANAGER
-                                .send_final(NotificationType::Failure(error))
-                                .await;
+            });
+
+            rsx! {
+                document::Meta {
+                    name: "viewport",
+                    content: "width=device-width, initial-scale=1.0",
+                }
+                document::Link { rel: "stylesheet", href: TAILWIND_CSS }
+                document::Link { rel: "stylesheet", href: crate::MAIN_CSS }
+                document::Link { rel: "stylesheet", href: crate::FONT_STYLES }
+                {crate::extra_css_styles()}
+                div { class: "bg-[var(--background-color)] krill-bg-dots flex flex-col min-h-screen items-end justify-start dark:text-white light:text-black",
+                    match error_to_ui.as_ref() {
+                        Some(value) => {
+                            rsx! {
+                                ErrorComponent { stringyfied: value.to_string() }
+                            }
+                        }
+                        None => {
+                            rsx! {
+                                NotificationComponent {}
+                                Router::<Route> {}
+                            }
                         }
                     }
-                    Err(_) => {
-                        let message = "UNABLE TO DECODE ORGANIZATION INFO".to_string();
-                        NOTIFICATION_MANAGER
-                            .send_final(NotificationType::Failure(WasmToolkitError::Op(message)))
-                            .await;
-                    }
-                },
+                }
             }
-
-            bind_org_info_to_page().await;
-            check_dark_mode().await;
-            dark_mode_listener().await;
-        });
-    });
-
-    rsx! {
-        document::Meta {
-            name: "viewport",
-            content: "width=device-width, initial-scale=1.0",
         }
-        document::Link { rel: "stylesheet", href: TAILWIND_CSS }
-        document::Link { rel: "stylesheet", href: crate::MAIN_CSS }
-        document::Link { rel: "stylesheet", href: crate::FONT_STYLES }
-        {crate::extra_css_styles()}
-        div { class: "bg-[var(--background-color)] krill-bg-dots flex flex-col min-h-screen items-end justify-start dark:text-white light:text-black",
-
-            NotificationComponent {}
-            Router::<Route> {}
-        }
+        Some(Err(error)) => rsx! {
+            ErrorComponent { stringyfied: error.to_string() }
+        },
+        None => rsx! {
+            Loader {}
+        },
     }
 }
 
@@ -257,7 +276,7 @@ async fn finalize_variable(outcome: WasmToolkitResult<()>) {
 }
 
 #[server]
-pub async fn fetch_org_info() -> ServerFnResult<Vec<u8>> {
+pub async fn fetch_org_info() -> dioxus::Result<Vec<u8>> {
     let info = crate::SERVER_ORG_INFO.get().cloned().unwrap_or_default();
 
     Ok(bitcode::encode(&info))

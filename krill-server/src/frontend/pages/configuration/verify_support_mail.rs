@@ -5,9 +5,12 @@ use krill_common::VerifyMailDetailsToUi;
 use web_sys::wasm_bindgen::{prelude::Closure, JsCast};
 
 use crate::{
-    ButtonInfo, Loader, LoadingLanguageTranslation, PrimaryButton, Translations,
+    ButtonInfo, ErrorUtil, Loader, LoadingLanguageTranslation, PrimaryButton, Translations,
     NOTIFICATION_MANAGER, SELECTED_LANGUAGE, WINDOW,
 };
+
+// TODO : This code is not the best, it works but it was created when figuring out dixous SSR
+// TODO: Also use `ErrorUtils`
 
 #[component]
 pub fn VerifySupportMail() -> Element {
@@ -17,7 +20,6 @@ pub fn VerifySupportMail() -> Element {
 
     let mut loading_langs = use_signal(|| true);
     let mut details = use_signal(|| Option::<VerifyMailDetailsToUi>::default());
-    let mut error_watcher = use_signal(|| String::default());
     let mut can_resend = use_signal(|| false);
     let mut countdown = use_signal(|| Option::<u64>::default());
 
@@ -44,9 +46,9 @@ pub fn VerifySupportMail() -> Element {
         });
     });
 
-    let mut response_handler = move |value: ServerFnResult<Vec<u8>>| match value {
-        Ok(details_bytes) => match bitcode::decode::<VerifyMailDetailsToUi>(&details_bytes) {
-            Ok(value) => {
+    let mut response_handler = move |value: dioxus::Result<Vec<u8>>| match value {
+        Ok(details_bytes) => {
+            if let Ok(value) = bitcode::decode::<VerifyMailDetailsToUi>(&details_bytes) {
                 countdown.write().replace(value.retry.as_secs());
 
                 details.write().replace(value);
@@ -97,26 +99,19 @@ pub fn VerifySupportMail() -> Element {
                                 .clear_interval_with_handle(*interval.borrow());
                         }
                     } else {
-                        error_watcher.set("Unable to set the interval for seconds".to_string());
+                        ErrorUtil::send_final_str("Unable to set the interval for seconds").await;
                     }
                 });
+            } else {
+                spawn(ErrorUtil::send_final_str(
+                    "Unable to decode `VerifyMailDetailsToUi`!",
+                ));
             }
-            Err(error) => {
-                error_watcher.set(error.to_string());
-            }
-        },
-        Err(error) => match error {
-            ServerFnError::ServerError {
-                message,
-                code: _,
-                details: _,
-            } => {
-                error_watcher.set(message.to_string());
-            }
-            _ => {
-                error_watcher.set(error.to_string());
-            }
-        },
+        }
+
+        Err(error) => {
+            spawn(ErrorUtil::downcast_dioxus_error(error));
+        }
     };
 
     use_effect(move || {
@@ -143,68 +138,55 @@ pub fn VerifySupportMail() -> Element {
 
                 }
 
-                if error_watcher.read().is_empty() {
-                    if let Some(details_inner) = details.read().as_ref() {
-                        div { class: "flex flex-col items-center justify-center",
-                            {translations.read().translate("support_email_verify_subheader")}
-                            " "
-                            {details_inner.obsf_mail.as_str()}
+                if let Some(details_inner) = details.read().as_ref() {
+                    div { class: "flex flex-col items-center justify-center",
+                        {translations.read().translate("support_email_verify_subheader")}
+                        " "
+                        {details_inner.obsf_mail.as_str()}
 
-                            if let Some(count) = countdown.read().as_ref() {
-                                div { class: "flex w-full items-center justify-center mt-1 font-[monospacefont] text-lg",
+                        if let Some(count) = countdown.read().as_ref() {
+                            div { class: "flex w-full items-center justify-center mt-1 font-[monospacefont] text-lg",
 
-                                    {translations.read().translate("retry_in")}
+                                {translations.read().translate("retry_in")}
 
-                                    span { class: "flex items-center justify-center ml-2 dark:text-[var(--primary-color)]",
-                                        {count.to_string()}
-                                        {translations.read().translate("seconds")}
-                                    }
-                                }
-                            }
-
-                            if *can_resend.read() {
-                                div { class: "flex w-full items-center justify-center mt-10",
-
-                                    PrimaryButton {
-                                        info: ButtonInfo::new_enabled_and_width(
-                                            &translations.read().translate("resend_verification_code"),
-                                            "w-[70%] max-w-[400px]",
-                                        ),
-                                        callback: move |_| {
-                                            details.set(Option::default());
-                                            error_watcher.set(String::default());
-                                            can_resend.set(false);
-                                            countdown.write().take();
-
-                                            spawn(async move {
-                                                response_handler(crate::send_superuser_login_auth_link().await)
-                                            });
-                                        },
-                                    }
-
+                                span { class: "flex items-center justify-center ml-2 dark:text-[var(--primary-color)]",
+                                    {count.to_string()}
+                                    {translations.read().translate("seconds")}
                                 }
                             }
                         }
-                    } else {
-                        div { class: "flex flex-col w-full text-center items-center justify-center",
-                            Loader {
-                                element: Some(rsx! {
-                                    div { class: "items-center justify-center flex w-full dark:text-[var(--primary-color)] font-[headingfont] font-black text-2xl",
-                                        "Fetching verification information"
-                                    }
-                                }),
-                                width: "w-[70%] max-w-[500px]",
+
+                        if *can_resend.read() {
+                            div { class: "flex w-full items-center justify-center mt-10",
+
+                                PrimaryButton {
+                                    info: ButtonInfo::new_enabled_and_width(
+                                        &translations.read().translate("resend_verification_code"),
+                                        "w-[70%] max-w-[400px]",
+                                    ),
+                                    callback: move |_| {
+                                        details.set(Option::default());
+                                        can_resend.set(false);
+                                        countdown.write().take();
+
+                                        spawn(async move {
+                                            response_handler(crate::send_superuser_login_auth_link().await)
+                                        });
+                                    },
+                                }
+
                             }
                         }
                     }
                 } else {
-                    div { class: "flex items-center justify-start font-[subheadingfont] flex w-[80%] lg:max-w-[60%] text-lg text-wrap flex-wrap px-4 py-2 mb-1 mt-1",
-                        span { class: "flex mr-1 max-w-[20px] min-w-[15px] w-[20%] border border-[var(--primary-color)] rounded-full p-[1px]",
-                            img { src: crate::ERROR_ICON, alt: "error_icon" }
-                        }
-
-                        span { class: "hidden md:flex px-0.5  font-[subheadingfont] font-bold font-black text-lg lg:text-xl  dark:text-red-300 light:text-red-500",
-                            {error_watcher.read().as_str()}
+                    div { class: "flex flex-col w-full text-center items-center justify-center",
+                        Loader {
+                            element: Some(rsx! {
+                                div { class: "items-center justify-center flex w-full dark:text-[var(--primary-color)] font-[headingfont] font-black text-2xl",
+                                    "Fetching verification information"
+                                }
+                            }),
+                            width: "w-[70%] max-w-[500px]",
                         }
                     }
                 }

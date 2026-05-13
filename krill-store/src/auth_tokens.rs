@@ -47,7 +47,14 @@ impl KrillStorage {
     }
 
     /// Removes auth token if expired
-    pub async fn get_auth_token(
+    pub async fn get_auth_token(&self, token: AuthTokenType) -> KrillResult<AuthTokenDetails> {
+        self.get_auth_token_checked(token)
+            .await?
+            .ok_or(KrillError::InvalidAuthToken)
+    }
+
+    /// Removes auth token if expired
+    pub async fn get_auth_token_checked(
         &self,
         token: AuthTokenType,
     ) -> KrillResult<Option<AuthTokenDetails>> {

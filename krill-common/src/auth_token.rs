@@ -73,12 +73,13 @@ impl AuthTokenDetails {
 
     /// If result is Unix EPOCH it makes it an error unless that is what you were expecting
     pub fn timestamp_formatted(&self) -> String {
-        let timestamp = self
-            .timestamp()
-            .duration_since(&Tai64N::UNIX_EPOCH)
-            .unwrap_or_default();
+        use time::OffsetDateTime;
 
-        humantime::format_duration(timestamp).to_string()
+        let timestamp = self.timestamp().to_system_time();
+
+        let utc_time: OffsetDateTime = timestamp.into();
+
+        utc_time.to_string()
     }
 
     /// If result is Unix EPOCH it makes it an error unless that is what you were expecting

@@ -117,6 +117,18 @@ impl Holder {
     pub fn email_envelope_details(&self) -> String {
         format!("{} <{}>", self.user_display(), self.email_address())
     }
+
+    pub fn is_superuser(&self) -> bool {
+        self.role() == UserRole::Superuser
+    }
+
+    pub fn is_admin(&self) -> bool {
+        self.role() == UserRole::Admin
+    }
+
+    pub fn is_user(&self) -> bool {
+        self.role() == UserRole::Member
+    }
 }
 
 impl fmt::Display for Holder {

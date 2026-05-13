@@ -1,6 +1,8 @@
+use core::fmt;
 use std::borrow::Cow;
 
 use bitcode::{Decode, Encode};
+use file_format::FileFormat;
 
 pub const FAVICON_DEFAULT: &[u8] = include_bytes!("../../assets/favicon.png");
 pub const LOGO_DEFAULT: &[u8] = include_bytes!("../../assets/krill-logo.svg");
@@ -66,30 +68,73 @@ impl Default for DynamicColorScheme {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Encode, Decode, Clone)]
+#[derive(Debug, Default, PartialEq, Eq, Encode, Decode, Clone)]
+pub struct SupportedIdentifiers {
+    pub superuser: bool,
+    pub admins: bool,
+    pub email: bool,
+    pub anonymous: bool,
+    pub phone_number: bool,
+}
+
+#[derive(PartialEq, Eq, Encode, Decode, Clone)]
 pub struct OrganizationInfo {
     pub name: String,
-    pub logo: Vec<u8>,
+    pub logo_icon: Vec<u8>,
+    pub logo_horizontal: Vec<u8>,
+    pub logo_vertical: Vec<u8>,
     pub favicon: Vec<u8>,
     pub support_mail: String,
     pub color_scheme: ColorScheme,
+    pub supported_identifiers: SupportedIdentifiers,
+}
+
+impl fmt::Debug for OrganizationInfo {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let process_media = |bytes: &[u8]| -> String {
+            let hash = blake3::hash(&self.logo_icon).to_string();
+            let media_type = FileFormat::from_bytes(bytes);
+            format!("{};{hash}", media_type.media_type())
+        };
+
+        f.debug_struct("OrganizationInfo")
+            .field("logo_icon", &process_media(&self.logo_icon))
+            .field("logo_horizontal", &process_media(&self.logo_horizontal))
+            .field("logo_vertical", &process_media(&self.logo_vertical))
+            .field("favicon", &process_media(&self.favicon))
+            .field("support_mail", &self.support_mail)
+            .field("color_scheme", &self.color_scheme)
+            .field("supported_identifiers", &self.supported_identifiers)
+            .finish()
+    }
 }
 
 impl Default for OrganizationInfo {
     fn default() -> Self {
         Self {
             name: "Example".to_string(),
-            logo: LOGO_DEFAULT.to_vec(),
+            logo_icon: LOGO_DEFAULT.to_vec(),
+            logo_horizontal: LOGO_DEFAULT.to_vec(),
+            logo_vertical: LOGO_DEFAULT.to_vec(),
             favicon: FAVICON_DEFAULT.to_vec(),
             support_mail: "support@example.com".to_string(),
             color_scheme: ColorScheme::default(),
+            supported_identifiers: SupportedIdentifiers::default(),
         }
     }
 }
 
 impl OrganizationInfo {
-    pub fn logo_to_css_base64(&self) -> Cow<'static, str> {
-        wasm_toolkit::WasmToolkitCommon::bytes_to_css_base64(self.logo.as_slice()).into()
+    pub fn logo_icon_to_css_base64(&self) -> Cow<'static, str> {
+        wasm_toolkit::WasmToolkitCommon::bytes_to_css_base64(self.logo_icon.as_slice()).into()
+    }
+
+    pub fn logo_horizontal_to_css_base64(&self) -> Cow<'static, str> {
+        wasm_toolkit::WasmToolkitCommon::bytes_to_css_base64(self.logo_horizontal.as_slice()).into()
+    }
+
+    pub fn logo_vertical_to_css_base64(&self) -> Cow<'static, str> {
+        wasm_toolkit::WasmToolkitCommon::bytes_to_css_base64(self.logo_vertical.as_slice()).into()
     }
 
     pub fn favicon_to_css_base64(&self) -> Cow<'static, str> {

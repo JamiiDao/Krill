@@ -4,8 +4,8 @@ use wasm_bindgen_futures::spawn_local;
 use wasm_toolkit::{NotificationType, WasmToolkitError};
 
 use crate::{
-    Loader, ProgressStateToUiRecord, SupportedLanguages, Translations, NOTIFICATION_MANAGER,
-    SELECTED_LANGUAGE, SUPPORTED_LANGUAGES_CLIENT,
+    ErrorComponent, Loader, ProgressStateToUiRecord, SupportedLanguages, Translations,
+    NOTIFICATION_MANAGER, SELECTED_LANGUAGE, SUPPORTED_LANGUAGES_CLIENT,
 };
 
 #[component]
@@ -73,8 +73,8 @@ pub fn LanguageView() -> Element {
                                 Some(Ok(value)) => {
                                     create_list(value,  state_data,translations)
                                 },
-                                Some(Err(error)) => {
-                                    rsx!{"Fetching languages error {error}"}
+                                Some(_) => {
+                                    rsx!{ErrorComponent{stringyfied:"Fetching languages error {error}".to_string()}}
                                 },
                                 None => {
                                     rsx!{Loader {}}

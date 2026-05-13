@@ -264,8 +264,20 @@ impl ProgressStateToUiRecord {
         self
     }
 
-    pub fn set_logo(&mut self, logo_bytes: Vec<u8>) -> &mut Self {
-        self.org_info.logo = logo_bytes;
+    pub fn set_logo_icon(&mut self, logo_bytes: Vec<u8>) -> &mut Self {
+        self.org_info.logo_icon = logo_bytes;
+
+        self
+    }
+
+    pub fn set_logo_horizontal(&mut self, logo_bytes: Vec<u8>) -> &mut Self {
+        self.org_info.logo_horizontal = logo_bytes;
+
+        self
+    }
+
+    pub fn set_logo_vertical(&mut self, logo_bytes: Vec<u8>) -> &mut Self {
+        self.org_info.logo_vertical = logo_bytes;
 
         self
     }
@@ -324,7 +336,9 @@ impl ProgressStateToUiRecord {
 pub struct CacheOrgInfo {
     pub name: Option<String>,
     pub support_mail: Option<String>,
-    pub logo: Vec<u8>,
+    pub logo_icon: Vec<u8>,
+    pub logo_horizontal: Vec<u8>,
+    pub logo_vertical: Vec<u8>,
     pub favicon: Vec<u8>,
     pub dominant_color: Option<String>,
     pub secondary_color: Option<String>,
@@ -341,7 +355,9 @@ impl fmt::Debug for CacheOrgInfo {
         f.debug_struct("CacheOrgInfo")
             .field("name", &self.name)
             .field("support_mail", &self.support_mail)
-            .field("logo", &as_hash(self.logo.as_slice()))
+            .field("logo_icon", &as_hash(self.logo_icon.as_slice()))
+            .field("logo_horizontal", &as_hash(self.logo_horizontal.as_slice()))
+            .field("logo_vertical", &as_hash(self.logo_vertical.as_slice()))
             .field("favicon", &as_hash(self.favicon.as_ref()))
             .field("dominant_color", &self.dominant_color)
             .field("secondary_color", &self.secondary_color)

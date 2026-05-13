@@ -8,28 +8,6 @@
 
 
 @font-face {
-    font-family: 'hhenumregular';
-    src: url('/hhenum-regular-webfont.woff2') format('woff2');
-    font-weight: normal;
-    font-style: normal;
-
-}
-
-
-
-@font-face {
-    font-family: 'averia_gruesa_libreregular';
-    src: url('averiagruesalibre-regular-webfont.woff2') format('woff2'),
-        url('averiagruesalibre-regular-webfont.woff') format('woff');
-    font-weight: normal;
-    font-style: normal;
-
-}
-
-
-
-
-@font-face {
     font-family: 'bungee_hairlineregular';
     src: url('bungeehairline-regular-webfont.woff2') format('woff2'),
         url('bungeehairline-regular-webfont.woff') format('woff');
@@ -38,37 +16,10 @@
 
 }
 
-
-
-
 @font-face {
-    font-family: 'folditthin';
-    src: url('foldit-variablefont_wght-webfont.woff2') format('woff2'),
-        url('foldit-variablefont_wght-webfont.woff') format('woff');
-    font-weight: normal;
-    font-style: normal;
-
-}
-
-
-
-
-@font-face {
-    font-family: 'marko_oneregular';
-    src: url('markoone-regular-webfont.woff2') format('woff2'),
-        url('markoone-regular-webfont.woff') format('woff');
-    font-weight: normal;
-    font-style: normal;
-
-}
-
-
-
-
-@font-face {
-    font-family: 'sixtyfourregular';
-    src: url('sixtyfour-regular-variablefont_bledscan-webfont.woff2') format('woff2'),
-        url('sixtyfour-regular-variablefont_bledscan-webfont.woff') format('woff');
+    font-family: 'nunitoregular';
+    src: url('Nunito-Regular.woff2') format('woff2'),
+        url('Nunito-Regular.woff') format('woff');
     font-weight: normal;
     font-style: normal;
 

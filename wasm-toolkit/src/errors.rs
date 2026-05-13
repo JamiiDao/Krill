@@ -63,6 +63,8 @@ pub enum WasmToolkitError {
     SessionStorageNotFound,
     #[error("Local Storage not found in the window")]
     LocalStorageNotFound,
+    #[error("The key `{0}` was not found in local storage")]
+    LocalStorageKeyNotFound(&'static str),
     #[error("Unable to find the closed element. Error `{0}`!")]
     UnableToFindClosedElement(String),
     #[error("Unable to get the `visualViewport`")]
