@@ -140,7 +140,6 @@ pub fn Header() -> Element {
             }
 
             div { class: "flex flex-col {content_min_height} overflow-y-auto",
-                {lorem()}
                 div { class: "{content_margin}" }
             }
         }
@@ -275,17 +274,4 @@ fn settings_icon() -> Element {
             }
         }
     }
-}
-
-fn lorem() -> &'static str {
-    r#""" Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nulla a ex lacus. Integer ultricies, enim vitae sollicitudin aliquam, metus arcu faucibus neque, eget gravida nisl lacus ultrices nibh. Orci varius natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Quisque cursus odio at aliquam pretium. Vivamus vel nulla auctor, laoreet diam in, porta justo. Ut cursus augue at velit porttitor pharetra. Nullam eleifend massa et urna ultrices, a venenatis augue rutrum. Phasellus tempus lacinia ex, sit amet facilisis massa imperdiet eu. Proin tristique pellentesque rutrum. Sed pellentesque ligula vitae lobortis accumsan. Morbi fringilla, ex eu ornare dignissim, sapien arcu aliquet velit, vitae efficitur libero eros pharetra nunc. Praesent id dui in lectus molestie ultrices. Integer imperdiet, velit at fermentum aliquet, nunc augue consequat est, in tincidunt augue neque et massa. Phasellus venenatis nulla ex, non maximus neque ultricies a.
-
-Nam sagittis, tellus id accumsan tincidunt, dolor tortor dignissim magna, id pulvinar mauris mauris sed massa. Sed congue tincidunt sapien sed sollicitudin. Nunc ut sapien tincidunt, pretium ex sed, pretium ante. Ut sollicitudin felis lorem. Integer vel ante nec libero euismod tempus vitae et nunc. Nunc facilisis, tortor sit amet sollicitudin elementum, diam dolor ultricies arcu, eu fermentum nisl lectus quis purus. Donec sed venenatis odio. Aliquam nunc quam, cursus malesuada lectus eu, tincidunt interdum nulla.
-
-Nam sit amet leo magna. Nunc non eros faucibus, mattis sem eget, rutrum elit. Nulla facilisi. Cras tincidunt, risus eu consectetur vestibulum, turpis tortor rhoncus ante, eu gravida nunc lectus et justo. Nullam laoreet enim eget iaculis tempor. In dui enim, gravida vitae urna convallis, dictum vulputate ipsum. Suspendisse potenti. Aliquam erat volutpat. Vestibulum et enim et orci sodales tempor. Nulla id orci sed tortor viverra porttitor. Etiam vel eleifend justo. Nullam nisi felis, consectetur volutpat velit ac, tincidunt dictum dolor. Sed ullamcorper lorem ac lorem luctus faucibus. Sed sem tortor, euismod et consequat gravida, dapibus ut erat.
-
-Phasellus aliquam sapien sapien, ac pulvinar tellus egestas tincidunt. Curabitur vulputate tempor nisl eu lacinia. Nunc suscipit et augue sit amet interdum. Sed mi nisl, porttitor eget leo non, dapibus ultrices quam. Nullam sit amet est ut velit iaculis interdum at a turpis. Quisque pretium accumsan augue et lobortis. In a magna orci.
-
-Nam tristique semper erat, at hendrerit mauris sollicitudin eget. Donec venenatis tincidunt tempus. Integer pharetra odio eget orci tempus faucibus. Phasellus at quam a dui tristique cursus. Nam finibus sapien ac bibendum eleifend. Cras commodo sagittis posuere. Vivamus faucibus diam sit amet efficitur feugiat. Cras ac dolor eget diam lacinia aliquam non a eros. Class aptent taciti sociosqu ad litora torquent per conubia nostra, per inceptos himenaeos. Aliquam dignissim congue mattis. Curabitur tincidunt eros vitae tortor tincidunt fringilla. Integer ut neque leo. Phasellus libero ligula, ultrices a magna id, laoreet euismod justo. Morbi tristique diam nec libero dapibus tincidunt. Praesent quis eros eget sapien aliquam luctus. Nunc convallis nulla sem, non congue leo feugiat non.     
-    """#
 }
