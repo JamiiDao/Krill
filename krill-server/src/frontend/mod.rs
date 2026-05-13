@@ -21,3 +21,6 @@ pub use components::*;
 
 mod translations;
 pub use translations::*;
+
+mod translations_loader;
+pub use translations_loader::*;

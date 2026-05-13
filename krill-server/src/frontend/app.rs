@@ -1,11 +1,12 @@
 use std::{iter::repeat_with, sync::LazyLock};
 
-use async_channel::Receiver;
+use async_channel::bounded;
 use countries_iso3166::BC47LanguageInfo;
 use dioxus::prelude::*;
 use krill_common::{ColorSchemePreference, DynamicColorScheme, OrganizationInfo};
 use wasm_toolkit::{
-    NotificationType, Notifications, WasmDocument, WasmToolkitError, WasmToolkitResult, WasmWindow,
+    BrowserMeasurements, NotificationType, Notifications, WasmDocument, WasmToolkitError,
+    WasmToolkitResult, WasmWindow,
 };
 
 use crate::{
@@ -43,10 +44,36 @@ pub(crate) static SUPPORTED_LANGUAGES_CLIENT: GlobalSignal<SupportedLanguages> =
     Signal::global(|| SupportedLanguages::default());
 pub(crate) static SELECTED_LANGUAGE: GlobalSignal<BC47LanguageInfo> =
     Signal::global(|| BC47LanguageInfo::default());
+pub(crate) static BROWSER_MEASUREMENTS: GlobalSignal<BrowserMeasurements> =
+    Signal::global(|| BrowserMeasurements::default());
 
 pub fn app() -> Element {
+    let (sender, receiver) = bounded::<Result<BrowserMeasurements, Vec<WasmToolkitError>>>(5);
+
+    spawn(async move {
+        while let Ok(message) = receiver.recv().await {
+            match message {
+                Ok(value) => {
+                    *BROWSER_MEASUREMENTS.write() = value;
+                }
+                Err(errors) => {
+                    for error in errors {
+                        NOTIFICATION_MANAGER.send_final_error(error).await
+                    }
+                }
+            }
+        }
+    });
+
     use_effect(move || {
+        let sender_cloned = sender.clone();
         spawn(async move {
+            load_measurements().await;
+
+            if let Err(error) = WINDOW.read().browser_measurements_listener(sender_cloned) {
+                NOTIFICATION_MANAGER.send_final_error(error).await;
+            }
+
             match fetch_org_info().await {
                 Err(error) => {
                     let message = "Fetching organization info error. Error: `".to_string()
@@ -176,6 +203,13 @@ async fn dark_mode_listener() {
                 match_bg_scheme(is_dark_mode).await;
             }
         }
+    }
+}
+
+async fn load_measurements() {
+    match WINDOW.read().get_browser_measurements() {
+        Err(error) => NOTIFICATION_MANAGER.send_final_error(error).await,
+        Ok(value) => *BROWSER_MEASUREMENTS.write() = value,
     }
 }
 

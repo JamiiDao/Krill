@@ -19,3 +19,4 @@ wasm-bindgen-futures.workspace = true
 base64ct.workspace = true
 web-sys.workspace = true
 file-format.workspace = true
+tracing = { version = "0.1.44", default-features = false }

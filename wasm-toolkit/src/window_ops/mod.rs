@@ -6,6 +6,9 @@ mod match_media;
 mod scroll;
 mod storage;
 
+mod viewport_ops;
+pub use viewport_ops::*;
+
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct WasmWindow(web_sys::Window);
 impl WasmWindow {

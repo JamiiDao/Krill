@@ -1,5 +1,7 @@
 mod assets;
-mod home;
+
+mod dashboard;
+pub use dashboard::*;
 
 #[cfg(feature = "server")]
 mod init_store;

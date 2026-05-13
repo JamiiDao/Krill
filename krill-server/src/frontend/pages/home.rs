@@ -9,13 +9,6 @@ pub fn Home() -> Element {
 }
 
 #[component]
-pub fn Dashboard() -> Element {
-    rsx! {
-        div { "Dashboard ROUTE" }
-    }
-}
-
-#[component]
 pub fn NotFound() -> Element {
     rsx! {
         div { "NOT FOUND" }

@@ -41,10 +41,7 @@ impl Notifications {
     /// Logs the error to console instead of returning it
     pub async fn send_final(&self, notification: NotificationType) {
         if let Err(error) = self.sender.clone().send(notification).await {
-            web_sys::console::log_2(
-                &"NOTIFICATION CHANNEL ERROR: ".into(),
-                &error.to_string().into(),
-            );
+            tracing::error!("NOTIFICATION CHANNEL ERROR: {}", error.to_string());
         }
     }
 
@@ -65,23 +62,19 @@ impl Notifications {
 
         let timeout = gloo_timers::callback::Timeout::new(secs, move || match WasmWindow::new() {
             Err(_) => {
-                web_sys::console::log_1(
-                    &"Unable to get the window to remove notifications from".into(),
-                );
+                tracing::error!("Unable to get the window to remove notifications from");
             }
             Ok(window) => match window.document() {
                 Err(_) => {
-                    web_sys::console::error_1(
-                        &"Unable to get the document to remove notifications from".into(),
-                    );
+                    tracing::error!("Unable to get the document to remove notifications from",);
                 }
                 Ok(document) => {
                     if let Some(element) = document.inner().get_element_by_id(&element_id) {
                         element.remove();
                     } else {
-                        web_sys::console::error_2(
-                            &"Element with ID does not exist. Element ID: ".into(),
-                            &element_id.as_str().into(),
+                        tracing::error!(
+                            "Element with ID does not exist. Element ID: {}",
+                            element_id.as_str()
                         );
                     }
                 }
